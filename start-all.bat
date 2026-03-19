@@ -4,6 +4,7 @@ setlocal
 set "ROOT=%~dp0"
 
 start "CryptoQuiz Backend" cmd /k "cd /d "%ROOT%backend" && npm run dev"
+timeout /t 3 /nobreak >nul
 start "CryptoQuiz Frontend" cmd /k "cd /d "%ROOT%frontend" && npm start"
 
 echo Backend and frontend are starting...
