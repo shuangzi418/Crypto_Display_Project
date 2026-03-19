@@ -1,0 +1,26 @@
+// 用户相关的action类型
+export const REGISTER_SUCCESS = 'REGISTER_SUCCESS';
+export const REGISTER_FAIL = 'REGISTER_FAIL';
+export const LOGIN_SUCCESS = 'LOGIN_SUCCESS';
+export const LOGIN_FAIL = 'LOGIN_FAIL';
+export const LOGOUT = 'LOGOUT';
+export const USER_LOADED = 'USER_LOADED';
+export const AUTH_ERROR = 'AUTH_ERROR';
+
+// 题目相关的action类型
+export const GET_QUESTIONS = 'GET_QUESTIONS';
+export const GET_QUESTION = 'GET_QUESTION';
+export const QUESTION_ERROR = 'QUESTION_ERROR';
+
+// 答题相关的action类型
+export const SUBMIT_ANSWER = 'SUBMIT_ANSWER';
+export const SUBMISSION_ERROR = 'SUBMISSION_ERROR';
+export const GET_SUBMISSIONS = 'GET_SUBMISSIONS';
+
+// 竞赛相关的action类型
+export const GET_COMPETITIONS = 'GET_COMPETITIONS';
+export const GET_COMPETITION = 'GET_COMPETITION';
+export const COMPETITION_ERROR = 'COMPETITION_ERROR';
+export const JOIN_COMPETITION = 'JOIN_COMPETITION';
+export const SUBMIT_COMPETITION_ANSWER = 'SUBMIT_COMPETITION_ANSWER';
+export const GET_COMPETITION_RANKING = 'GET_COMPETITION_RANKING';
