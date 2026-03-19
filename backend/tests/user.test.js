@@ -90,4 +90,62 @@ describe('User Authentication', () => {
     expect(res.body.username).toBe('testuser');
     expect(res.body.email).toBe(uniqueEmail);
   });
+
+  test('should require current password when changing password', async () => {
+    const uniqueEmail = `test${Date.now()}@example.com`;
+    const registerRes = await request(app)
+      .post('/api/users/register')
+      .send({
+        username: 'testuser',
+        email: uniqueEmail,
+        password: 'password123'
+      });
+
+    const token = registerRes.body.token;
+
+    const res = await request(app)
+      .put('/api/users/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        password: 'newpassword123'
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('Current password is required');
+  });
+
+  test('should update password with current password', async () => {
+    const uniqueEmail = `test${Date.now()}@example.com`;
+    const registerRes = await request(app)
+      .post('/api/users/register')
+      .send({
+        username: 'testuser',
+        email: uniqueEmail,
+        password: 'password123'
+      });
+
+    const token = registerRes.body.token;
+
+    const updateRes = await request(app)
+      .put('/api/users/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        username: 'testuser',
+        email: uniqueEmail,
+        currentPassword: 'password123',
+        password: 'newpassword123'
+      });
+
+    expect(updateRes.statusCode).toBe(200);
+
+    const loginRes = await request(app)
+      .post('/api/users/login')
+      .send({
+        email: uniqueEmail,
+        password: 'newpassword123'
+      });
+
+    expect(loginRes.statusCode).toBe(200);
+    expect(loginRes.body).toHaveProperty('token');
+  });
 });

@@ -20,6 +20,8 @@ const sanitizeInput = (input) => {
   return input;
 };
 
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 // 生成JWT令牌
 const generateToken = (id, ip, userAgent) => {
   return jwt.sign({ 
@@ -198,9 +200,46 @@ exports.updateUserProfile = async (req, res) => {
   const user = await User.findById(req.user.id);
 
   if (user) {
-    user.username = req.body.username || user.username;
-    user.email = req.body.email || user.email;
+    const nextUsername = req.body.username ? sanitizeInput(req.body.username) : user.username;
+    const nextEmail = req.body.email ? sanitizeInput(req.body.email).toLowerCase() : user.email;
+
+    if (!nextUsername) {
+      return res.status(400).json({ message: 'Username is required' });
+    }
+
+    if (!isValidEmail(nextEmail)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
+    }
+
+    const existingUser = await User.findOne({
+      $or: [
+        { username: nextUsername },
+        { email: nextEmail }
+      ],
+      _id: { $ne: user._id }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'Username or email already in use' });
+    }
+
+    user.username = nextUsername;
+    user.email = nextEmail;
+
     if (req.body.password) {
+      if (!req.body.currentPassword) {
+        return res.status(400).json({ message: 'Current password is required' });
+      }
+
+      const passwordMatched = await user.matchPassword(req.body.currentPassword);
+      if (!passwordMatched) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+
+      if (req.body.password.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters' });
+      }
+
       user.password = req.body.password;
     }
 

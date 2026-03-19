@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register } from '../actions/userActions';
 import { Form, Input, Button, Card, Alert } from 'antd';
@@ -11,18 +11,18 @@ const Register = () => {
   const history = useHistory();
   const { isAuthenticated } = useSelector(state => state.user);
 
-  // 如果已经登录，跳转到首页
-  if (isAuthenticated) {
-    history.push('/');
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      history.replace('/');
+    }
+  }, [history, isAuthenticated]);
 
   const onFinish = async (values) => {
     try {
       setError(null);
       await dispatch(register({ username: values.username, email: values.email, password: values.password }));
-      history.push('/');
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      setError(err.message || 'Registration failed. Please try again.');
     }
   };
 

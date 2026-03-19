@@ -4,6 +4,20 @@ import { useSelector, useDispatch } from 'react-redux';
 import { loadUser } from '../actions/userActions';
 import { Tabs, Input } from 'antd';
 
+const getErrorMessage = (error, fallbackMessage) => {
+  if (error && error.response && error.response.data) {
+    if (error.response.data.message) {
+      return error.response.data.message;
+    }
+
+    if (Array.isArray(error.response.data.errors) && error.response.data.errors.length > 0) {
+      return error.response.data.errors[0].msg || fallbackMessage;
+    }
+  }
+
+  return fallbackMessage;
+};
+
 const UserSettings = () => {
   const [nickname, setNickname] = useState('');
   const [avatar, setAvatar] = useState('');
@@ -35,8 +49,19 @@ const UserSettings = () => {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        setMessage('请选择图片文件');
+        setTimeout(() => setMessage(''), 3000);
+        return;
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage('头像文件不能超过 2MB');
+        setTimeout(() => setMessage(''), 3000);
+        return;
+      }
+
       setUploading(true);
-      // 这里可以实现图片上传逻辑，暂时使用base64模拟
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatar(reader.result);
@@ -49,17 +74,29 @@ const UserSettings = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (!username.trim()) {
+        setMessage('用户名不能为空');
+        setTimeout(() => setMessage(''), 3000);
+        return;
+      }
+
+      if (!email.trim()) {
+        setMessage('邮箱不能为空');
+        setTimeout(() => setMessage(''), 3000);
+        return;
+      }
+
       // 更新设置（头像和昵称）
       const settingsPayload = { avatar };
       if (reduxUser.role !== 'admin') {
-        settingsPayload.nickname = nickname;
+        settingsPayload.nickname = nickname.trim();
       }
       await api.put('/users/settings', settingsPayload);
       
       // 更新账号信息（用户名和邮箱）
       await api.put('/users/profile', {
-        username,
-        email
+        username: username.trim(),
+        email: email.trim()
       });
       
       setMessage('设置更新成功！');
@@ -68,7 +105,7 @@ const UserSettings = () => {
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('更新设置失败:', error);
-      setMessage('更新设置失败，请重试');
+      setMessage(getErrorMessage(error, '更新设置失败，请重试'));
       setTimeout(() => setMessage(''), 3000);
     }
   };
@@ -82,7 +119,15 @@ const UserSettings = () => {
           setTimeout(() => setMessage(''), 3000);
           return;
         }
+
+        if (newPassword.length < 6) {
+          setMessage('新密码长度至少为6位');
+          setTimeout(() => setMessage(''), 3000);
+          return;
+        }
+
         await api.put('/users/profile', {
+          currentPassword,
           password: newPassword
         });
         // 重置密码表单
@@ -97,7 +142,7 @@ const UserSettings = () => {
       }
     } catch (error) {
       console.error('密码修改失败:', error);
-      setMessage('密码修改失败，请重试');
+      setMessage(getErrorMessage(error, '密码修改失败，请重试'));
       setTimeout(() => setMessage(''), 3000);
     }
   };

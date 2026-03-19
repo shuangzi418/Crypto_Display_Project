@@ -1,6 +1,20 @@
 import api from '../axios';
 import { REGISTER_SUCCESS, REGISTER_FAIL, LOGIN_SUCCESS, LOGIN_FAIL, LOGOUT, USER_LOADED, AUTH_ERROR } from './types';
 
+const getErrorMessage = (err, fallbackMessage) => {
+  if (err && err.response && err.response.data) {
+    if (err.response.data.message) {
+      return err.response.data.message;
+    }
+
+    if (Array.isArray(err.response.data.errors) && err.response.data.errors.length > 0) {
+      return err.response.data.errors[0].msg || fallbackMessage;
+    }
+  }
+
+  return fallbackMessage;
+};
+
 const persistToken = (token) => {
   if (token) {
     localStorage.setItem('token', token);
@@ -50,6 +64,7 @@ export const register = ({ username, email, password }) => async dispatch => {
     dispatch({
       type: REGISTER_FAIL
     });
+    throw new Error(getErrorMessage(err, 'Registration failed'));
   }
 };
 
@@ -76,6 +91,7 @@ export const login = ({ email, password }) => async dispatch => {
     dispatch({
       type: LOGIN_FAIL
     });
+    throw new Error(getErrorMessage(err, 'Login failed'));
   }
 };
 

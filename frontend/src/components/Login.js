@@ -27,7 +27,7 @@ const Login = () => {
       setError(null);
       await dispatch(login({ email: values.email, password: values.password }));
     } catch (err) {
-      setError('Invalid email or password');
+      setError(err.message || 'Invalid email or password');
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom';
-import { Layout, Menu } from 'antd';
+import { BrowserRouter as Router, Switch, Route, Link, Redirect } from 'react-router-dom';
+import { Layout, Menu, Spin } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadUser, logout, refreshToken } from './actions/userActions';
 import Login from './components/Login';
@@ -17,7 +17,7 @@ const { Header, Content, Footer } = Layout;
 
 function App() {
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector(state => state.user);
+  const { isAuthenticated, user, loading } = useSelector(state => state.user);
 
   // 加载用户信息
   useEffect(() => {
@@ -89,30 +89,30 @@ function App() {
               <Route exact path="/">
                 <HomePage />
               </Route>
-              <Route path="/quiz">
+              <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading}>
                 <Quiz />
-              </Route>
+              </PrivateRoute>
               <Route path="/ranking">
                 <Ranking />
               </Route>
-              <Route path="/admin">
+              <AdminRoute path="/admin" isAuthenticated={isAuthenticated} isLoading={loading} user={user}>
                 <Admin />
-              </Route>
-              <Route path="/login">
+              </AdminRoute>
+              <PublicRoute path="/login" isAuthenticated={isAuthenticated} isLoading={loading}>
                 <Login />
-              </Route>
-              <Route path="/register">
+              </PublicRoute>
+              <PublicRoute path="/register" isAuthenticated={isAuthenticated} isLoading={loading}>
                 <Register />
-              </Route>
+              </PublicRoute>
               <Route path="/forgot-password">
                 <ForgotPassword />
               </Route>
               <Route path="/reset-password/:token">
                 <ResetPassword />
               </Route>
-              <Route path="/settings">
+              <PrivateRoute path="/settings" isAuthenticated={isAuthenticated} isLoading={loading}>
                 <UserSettings />
-              </Route>
+              </PrivateRoute>
             </Switch>
           </div>
         </Content>
@@ -123,6 +123,63 @@ function App() {
       {/* 消息通知组件 */}
       {isAuthenticated && <Messages />}
     </Router>
+  );
+}
+
+function RouteLoading() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
+      <Spin size="large" />
+    </div>
+  );
+}
+
+function PrivateRoute({ children, isAuthenticated, isLoading, ...rest }) {
+  return (
+    <Route
+      {...rest}
+      render={() => {
+        if (isLoading) {
+          return <RouteLoading />;
+        }
+
+        return isAuthenticated ? children : <Redirect to="/login" />;
+      }}
+    />
+  );
+}
+
+function PublicRoute({ children, isAuthenticated, isLoading, ...rest }) {
+  return (
+    <Route
+      {...rest}
+      render={() => {
+        if (isLoading) {
+          return <RouteLoading />;
+        }
+
+        return isAuthenticated ? <Redirect to="/" /> : children;
+      }}
+    />
+  );
+}
+
+function AdminRoute({ children, isAuthenticated, isLoading, user, ...rest }) {
+  return (
+    <Route
+      {...rest}
+      render={() => {
+        if (isLoading) {
+          return <RouteLoading />;
+        }
+
+        if (!isAuthenticated) {
+          return <Redirect to="/login" />;
+        }
+
+        return user && user.role === 'admin' ? children : <Redirect to="/" />;
+      }}
+    />
   );
 }
 
