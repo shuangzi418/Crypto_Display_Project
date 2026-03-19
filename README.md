@@ -108,6 +108,14 @@ EMAIL_PASS=your_mail_password
 
 ### 3. 启动项目
 
+也可以直接在项目根目录使用一键启动脚本：
+
+```bat
+start-all.bat
+```
+
+该脚本会自动打开两个终端窗口，分别启动前后端服务。
+
 后端：
 
 ```bash
