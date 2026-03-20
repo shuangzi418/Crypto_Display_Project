@@ -57,6 +57,7 @@ CryptoQuizSystem/
 |   `-- package.json
 |-- .gitignore
 |-- HTTPS_SETUP.md
+|-- package.json
 `-- README.md
 ```
 
@@ -70,6 +71,23 @@ CryptoQuizSystem/
 ## 快速启动
 
 ### 1. 安装依赖
+
+推荐直接在项目根目录执行一条命令安装全部依赖：
+
+```bash
+cd E:\密码线上答题\CryptoQuizSystem
+npm install
+```
+
+或使用等价脚本：
+
+```bash
+npm run install:all
+```
+
+该命令会自动安装根目录、`backend/` 和 `frontend/` 的全部依赖。
+
+如果你想分别安装，也可以使用下面的方式：
 
 ```bash
 cd backend
@@ -108,13 +126,26 @@ EMAIL_PASS=your_mail_password
 
 ### 3. 启动项目
 
-也可以直接在项目根目录使用一键启动脚本：
+推荐直接在项目根目录使用命令行一键启动：
 
-```bat
-start-all.bat
+```bash
+cd E:\密码线上答题\CryptoQuizSystem
+npm run dev
 ```
 
-该脚本会自动打开两个终端窗口，分别启动前后端服务。
+常用命令：
+
+```bash
+npm run dev
+npm run stop
+npm run admin:init
+```
+
+说明：
+
+- `npm run dev`：同时启动前后端
+- `npm run stop`：关闭 `3001` 和 `5000` 端口上的开发服务
+- `npm run admin:init`：根据 `backend/.env` 中的管理员配置把管理员同步到数据库
 
 后端：
 

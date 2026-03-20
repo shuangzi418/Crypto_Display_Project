@@ -70,6 +70,9 @@ mongoose.connect(process.env.MONGO_URI, {
         password: ADMIN_PASSWORD,
         role: 'admin'
       });
+      console.log(`Initialized admin user: ${ADMIN_EMAIL}`);
+    } else {
+      console.log(`Admin bootstrap skipped, user already exists: ${ADMIN_EMAIL}`);
     }
   }
 }).catch(err => {

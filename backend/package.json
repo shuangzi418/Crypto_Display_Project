@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "jest --testPathPattern=tests/ --runInBand --detectOpenHandles"
+    "test": "jest --testPathPattern=tests/ --runInBand --detectOpenHandles",
+    "admin:init": "node scripts/initAdmin.js"
   },
   "dependencies": {
     "axios": "^1.13.6",
