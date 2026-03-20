@@ -85,10 +85,10 @@ npm install
 
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/crypto_quiz
+MONGO_URI=mongodb://localhost:27017/crypto-quiz
 JWT_SECRET=replace_with_a_strong_secret
 FRONTEND_URL=http://localhost:3001
-CORS_ORIGIN=http://localhost:3001
+CORS_ORIGIN=http://localhost:3001,http://127.0.0.1:3001,http://localhost:3000
 
 # 可选：首次启动时自动创建管理员
 ADMIN_USERNAME=admin
@@ -102,6 +102,8 @@ EMAIL_PASS=your_mail_password
 
 说明：
 
+- 本项目默认使用本机 MongoDB：`mongodb://localhost:27017/crypto-quiz`
+- 请先确认本地 MongoDB 服务已经启动，再执行 `npm run dev`
 - `ADMIN_EMAIL` 和 `ADMIN_PASSWORD` 仅在需要自动初始化管理员时填写
 - 如果未配置管理员环境变量，系统不会自动创建默认管理员账号
 - 可直接复制 `backend/.env.example` 为 `backend/.env` 再按实际环境修改

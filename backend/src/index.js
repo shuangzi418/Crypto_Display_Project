@@ -11,10 +11,18 @@ dotenv.config({ path: envPath });
 // 初始化Express应用
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
-const allowedOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3001')
-  .split(',')
+const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
+  .filter(Boolean)
+  .flatMap((value) => value.split(','))
   .map((origin) => origin.trim())
   .filter(Boolean);
+const allowedOrigins = Array.from(new Set([
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  ...configuredOrigins
+]));
 
 // 在生产环境信任反向代理并强制HTTPS
 app.enable('trust proxy');
@@ -30,6 +38,10 @@ if (process.env.NODE_ENV === 'production') {
 // 中间件
 app.use(cors({
   origin(origin, callback) {
+    if (!isProduction) {
+      return callback(null, true);
+    }
+
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
