@@ -2,11 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getQuestions } from '../actions/questionActions';
 import { submitAnswer } from '../actions/submissionActions';
-import { getCompetitions } from '../actions/competitionActions';
-import { Form, Button, Card, Radio, Alert, Spin, Tabs, Descriptions } from 'antd';
+import { getCompetitions, joinCompetition, submitCompetitionAnswer } from '../actions/competitionActions';
+import { Form, Button, Card, Radio, Alert, Spin, Tabs, Descriptions, message } from 'antd';
 import { useHistory } from 'react-router-dom';
 
-const { TabPane } = Tabs;
+const buildResultState = (submissionResult) => ({
+  isCorrect: submissionResult.submission.isCorrect,
+  correctAnswer: submissionResult.correctAnswer,
+  points: submissionResult.points,
+  alreadySubmitted: Boolean(submissionResult.alreadySubmitted),
+  competitionScore: submissionResult.competitionScore
+});
+
+const buildResultDescription = (result, options) => {
+  const correctAnswerText = options[result.correctAnswer];
+
+  if (result.alreadySubmitted) {
+    return result.isCorrect
+      ? '这道题你已经答过了，本次不再重复计分。'
+      : `这道题你已经答过了，正确答案是：${correctAnswerText}`;
+  }
+
+  return result.isCorrect
+    ? `恭喜你获得 ${result.points} 分！`
+    : `正确答案是：${correctAnswerText}`;
+};
 
 const Quiz = () => {
   const [form] = Form.useForm();
@@ -43,11 +63,7 @@ const Quiz = () => {
   // 当提交答案后，显示结果
   useEffect(() => {
     if (currentSubmission) {
-      setResult({
-        isCorrect: currentSubmission.submission.isCorrect,
-        correctAnswer: currentSubmission.correctAnswer,
-        points: currentSubmission.points
-      });
+      setResult(buildResultState(currentSubmission));
     }
   }, [currentSubmission]);
 
@@ -63,9 +79,9 @@ const Quiz = () => {
   const handleSubmit = async () => {
     try {
       await form.validateFields();
-      dispatch(submitAnswer(selectedQuestion._id, answer));
+      await dispatch(submitAnswer(selectedQuestion._id, answer));
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      message.error(error.message || '提交答案失败');
     }
   };
 
@@ -78,13 +94,23 @@ const Quiz = () => {
   };
 
   // 选择竞赛
-  const handleCompetitionSelect = (competition) => {
+  const handleCompetitionSelect = async (competition) => {
     setSelectedCompetition(competition);
     setCompetitionQuestions(competition.questions || []);
     setCurrentCompetitionQuestion(null);
     setAnswer(null);
     setResult(null);
     form.resetFields();
+
+    try {
+      const joinResult = await dispatch(joinCompetition(competition._id));
+
+      if (joinResult && !joinResult.alreadyJoined) {
+        message.success('已加入竞赛，可以开始答题');
+      }
+    } catch (error) {
+      message.error(error.message || '加入竞赛失败');
+    }
   };
 
   // 选择竞赛题目
@@ -99,9 +125,15 @@ const Quiz = () => {
   const handleCompetitionSubmit = async () => {
     try {
       await form.validateFields();
-      dispatch(submitAnswer(currentCompetitionQuestion._id, answer));
+      const submissionResult = await dispatch(
+        submitCompetitionAnswer(selectedCompetition._id, currentCompetitionQuestion._id, answer)
+      );
+
+      if (submissionResult) {
+        setResult(buildResultState(submissionResult));
+      }
     } catch (error) {
-      console.error('Error submitting competition answer:', error);
+      message.error(error.message || '提交竞赛答案失败');
     }
   };
 
@@ -109,20 +141,19 @@ const Quiz = () => {
     return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', padding: '40px' }} />;
   }
 
-  return (
-    <div style={{ padding: '24px' }}>
-      <h1>答题中心</h1>
-      
-      <Tabs defaultActiveKey="practice" style={{ marginBottom: '20px' }}>
-        {/* 练习板块 */}
-        <TabPane tab="练习板块" key="practice">
+  const tabItems = [
+    {
+      key: 'practice',
+      label: '练习板块',
+      children: (
+        <>
           <Card style={{ marginBottom: '20px' }}>
             <div style={{ marginBottom: '20px' }}>
               <Button type="primary" onClick={handleRandomQuestion}>
                 随机出题
               </Button>
             </div>
-            
+
             <h3>练习模式</h3>
             <p>点击上方按钮随机获取题目进行练习</p>
           </Card>
@@ -130,7 +161,7 @@ const Quiz = () => {
           {selectedQuestion && (
             <Card title={selectedQuestion.title}>
               <p>{selectedQuestion.content}</p>
-              
+
               <Form
                 form={form}
                 layout="vertical"
@@ -158,28 +189,29 @@ const Quiz = () => {
 
               {result && (
                 <Alert
-                  message={result.isCorrect ? '回答正确！' : '回答错误！'}
-                  description={result.isCorrect ? 
-                    `恭喜你获得 ${result.points} 分！` : 
-                    `正确答案是：${selectedQuestion.options[result.correctAnswer]}`
-                  }
+                  message={result.alreadySubmitted ? '本题已作答' : (result.isCorrect ? '回答正确！' : '回答错误！')}
+                  description={buildResultDescription(result, selectedQuestion.options)}
                   type={result.isCorrect ? 'success' : 'error'}
                   showIcon
                 />
               )}
             </Card>
           )}
-        </TabPane>
-
-        {/* 竞赛板块 */}
-        <TabPane tab="竞赛板块" key="competition">
+        </>
+      )
+    },
+    {
+      key: 'competition',
+      label: '竞赛板块',
+      children: (
+        <>
           <Card style={{ marginBottom: '20px' }}>
             <h3>当前竞赛</h3>
             <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
               {competitions.length > 0 ? (
-                competitions.map(competition => (
-                  <Card 
-                    key={competition._id} 
+                competitions.map((competition) => (
+                  <Card
+                    key={competition._id}
                     style={{ marginBottom: '10px', cursor: 'pointer' }}
                     onClick={() => handleCompetitionSelect(competition)}
                     bordered={selectedCompetition?._id === competition._id}
@@ -202,12 +234,12 @@ const Quiz = () => {
             <div>
               <Card title={`竞赛：${selectedCompetition.title}`}>
                 <p>{selectedCompetition.description}</p>
-                
+
                 <h4>竞赛题目</h4>
                 <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '20px' }}>
-                  {competitionQuestions.map(question => (
-                    <Card 
-                      key={question._id} 
+                  {competitionQuestions.map((question) => (
+                    <Card
+                      key={question._id}
                       style={{ marginBottom: '10px', cursor: 'pointer' }}
                       onClick={() => handleCompetitionQuestionSelect(question)}
                       bordered={currentCompetitionQuestion?._id === question._id}
@@ -224,7 +256,7 @@ const Quiz = () => {
               {currentCompetitionQuestion && (
                 <Card title={currentCompetitionQuestion.title}>
                   <p>{currentCompetitionQuestion.content}</p>
-                  
+
                   <Form
                     form={form}
                     layout="vertical"
@@ -252,11 +284,8 @@ const Quiz = () => {
 
                   {result && (
                     <Alert
-                      message={result.isCorrect ? '回答正确！' : '回答错误！'}
-                      description={result.isCorrect ? 
-                        `恭喜你获得 ${result.points} 分！` : 
-                        `正确答案是：${currentCompetitionQuestion.options[result.correctAnswer]}`
-                      }
+                      message={result.alreadySubmitted ? '本题已作答' : (result.isCorrect ? '回答正确！' : '回答错误！')}
+                      description={buildResultDescription(result, currentCompetitionQuestion.options)}
                       type={result.isCorrect ? 'success' : 'error'}
                       showIcon
                     />
@@ -265,8 +294,16 @@ const Quiz = () => {
               )}
             </div>
           )}
-        </TabPane>
-      </Tabs>
+        </>
+      )
+    }
+  ];
+
+  return (
+    <div style={{ padding: '24px' }}>
+      <h1>答题中心</h1>
+
+      <Tabs defaultActiveKey="practice" style={{ marginBottom: '20px' }} items={tabItems} />
     </div>
   );
 };

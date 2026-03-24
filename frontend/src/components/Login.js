@@ -39,13 +39,14 @@ const Login = () => {
           form={form}
           layout="vertical"
           onFinish={onFinish}
+          autoComplete="on"
         >
           <Form.Item
             name="email"
             label="邮箱"
             rules={[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '请输入有效的邮箱地址' }]}
           >
-            <Input placeholder="请输入邮箱" />
+            <Input placeholder="请输入邮箱" autoComplete="email" />
           </Form.Item>
 
           <Form.Item
@@ -53,7 +54,7 @@ const Login = () => {
             label="密码"
             rules={[{ required: true, message: '请输入密码' }, { min: 6, message: '密码长度至少为6位' }]}
           >
-            <Input.Password placeholder="请输入密码" />
+            <Input.Password placeholder="请输入密码" autoComplete="current-password" />
           </Form.Item>
 
           <Form.Item>

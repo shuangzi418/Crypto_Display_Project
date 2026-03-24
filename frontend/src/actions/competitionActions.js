@@ -1,20 +1,39 @@
 import api from '../axios';
 import { GET_COMPETITIONS, GET_COMPETITION, COMPETITION_ERROR, JOIN_COMPETITION, SUBMIT_COMPETITION_ANSWER, GET_COMPETITION_RANKING } from './types';
 
+const getErrorMessage = (err, fallbackMessage) => {
+  if (err && err.response && err.response.data && err.response.data.message) {
+    return err.response.data.message;
+  }
+
+  return fallbackMessage;
+};
+
 // 获取竞赛列表
-export const getCompetitions = (status) => async dispatch => {
+export const getCompetitions = (filters = {}) => async dispatch => {
   try {
-    const params = status ? `?status=${status}` : '';
-    const res = await api.get(`/competitions${params}`);
+    const params = new URLSearchParams();
+
+    if (typeof filters === 'string') {
+      params.append('status', filters);
+    } else {
+      if (filters.status) params.append('status', filters.status);
+      if (filters.search) params.append('search', filters.search);
+    }
+
+    const queryString = params.toString();
+    const res = await api.get(`/competitions${queryString ? `?${queryString}` : ''}`);
 
     dispatch({
       type: GET_COMPETITIONS,
       payload: res.data
     });
   } catch (err) {
+    const errorMessage = getErrorMessage(err, 'Load competitions failed');
+
     dispatch({
       type: COMPETITION_ERROR,
-      payload: err.response.data.message
+      payload: errorMessage
     });
   }
 };
@@ -29,9 +48,11 @@ export const getCompetition = (id) => async dispatch => {
       payload: res.data
     });
   } catch (err) {
+    const errorMessage = getErrorMessage(err, 'Load competition failed');
+
     dispatch({
       type: COMPETITION_ERROR,
-      payload: err.response.data.message
+      payload: errorMessage
     });
   }
 };
@@ -45,11 +66,17 @@ export const joinCompetition = (competitionId) => async dispatch => {
       type: JOIN_COMPETITION,
       payload: res.data
     });
+
+    return res.data;
   } catch (err) {
+    const errorMessage = getErrorMessage(err, 'Join competition failed');
+
     dispatch({
       type: COMPETITION_ERROR,
-      payload: err.response.data.message
+      payload: errorMessage
     });
+
+    throw new Error(errorMessage);
   }
 };
 
@@ -62,11 +89,17 @@ export const submitCompetitionAnswer = (competitionId, questionId, answer) => as
       type: SUBMIT_COMPETITION_ANSWER,
       payload: res.data
     });
+
+    return res.data;
   } catch (err) {
+    const errorMessage = getErrorMessage(err, 'Submit competition answer failed');
+
     dispatch({
       type: COMPETITION_ERROR,
-      payload: err.response.data.message
+      payload: errorMessage
     });
+
+    throw new Error(errorMessage);
   }
 };
 
@@ -80,9 +113,11 @@ export const getCompetitionRanking = (competitionId) => async dispatch => {
       payload: res.data
     });
   } catch (err) {
+    const errorMessage = getErrorMessage(err, 'Load competition ranking failed');
+
     dispatch({
       type: COMPETITION_ERROR,
-      payload: err.response.data.message
+      payload: errorMessage
     });
   }
 };

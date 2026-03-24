@@ -1,32 +1,36 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const BaseModel = require('./BaseModel');
 
-const SubmissionSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  question: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Question',
-    required: true
-  },
+class Submission extends BaseModel {}
+
+Submission.init({
   answer: {
-    type: Number,
-    required: true
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   isCorrect: {
-    type: Boolean,
-    required: true
+    type: DataTypes.BOOLEAN,
+    allowNull: false
   },
   points: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  competitionId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
   },
   submittedAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
+}, {
+  sequelize,
+  modelName: 'Submission',
+  tableName: 'submissions',
+  timestamps: false
 });
 
-module.exports = mongoose.model('Submission', SubmissionSchema);
+module.exports = Submission;

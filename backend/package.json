@@ -6,8 +6,11 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "jest --testPathPattern=tests/ --runInBand --detectOpenHandles",
-    "admin:init": "node scripts/initAdmin.js"
+    "test": "cross-env NODE_ENV=test DB_DIALECT=mysql DB_NAME=crypto_quiz_test node scripts/verifyTestDatabase.js && cross-env NODE_ENV=test DB_DIALECT=mysql DB_NAME=crypto_quiz_test jest --testPathPattern=tests/ --runInBand --detectOpenHandles --globalTeardown=./tests/teardown.js",
+    "admin:init": "node scripts/initAdmin.js",
+    "seed:demo": "node scripts/seedDemoData.js",
+    "sql:export": "node scripts/exportSql.js",
+    "sql:import": "node scripts/importSql.js"
   },
   "dependencies": {
     "axios": "^1.13.6",
@@ -17,13 +20,22 @@
     "express": "^4.17.1",
     "express-validator": "^6.11.1",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.12.3",
-    "nodemailer": "^8.0.1"
+    "multer": "^2.0.2",
+    "mysql2": "2.3.3",
+    "nodemailer": "^8.0.1",
+    "sequelize": "^6.37.7",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "jest": "^26.6.3",
     "nodemon": "^2.0.7",
     "supertest": "^6.1.3"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^node:(.+)$": "$1"
+    }
   },
   "author": "",
   "license": "ISC"

@@ -163,6 +163,176 @@ const UserSettings = () => {
     );
   }
 
+  const tabItems = [
+    {
+      key: '1',
+      label: '个人设置',
+      children: (
+        <form onSubmit={handleSubmit}>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>个人信息</h3>
+            <div style={styles.profileSection}>
+              <div style={styles.avatarSection}>
+                <div style={styles.avatarPreview}>
+                  <img
+                    src={avatar || 'https://via.placeholder.com/150'}
+                    alt="头像"
+                    style={styles.avatar}
+                  />
+                  {uploading && (
+                    <div style={styles.uploadingOverlay}>
+                      <div style={styles.uploadingText}>上传中...</div>
+                    </div>
+                  )}
+                  {reduxUser.avatarStatus && reduxUser.role !== 'admin' && (
+                    <div style={{
+                      ...styles.avatarStatusBadge,
+                      ...styles[`avatarStatus${reduxUser.avatarStatus.charAt(0).toUpperCase() + reduxUser.avatarStatus.slice(1)}`]
+                    }}>
+                      {reduxUser.avatarStatus === 'pending' ? '审核中' :
+                        reduxUser.avatarStatus === 'approved' ? '已通过' : '已拒绝'}
+                    </div>
+                  )}
+                </div>
+                <div style={styles.avatarUpload}>
+                  <label style={styles.uploadButton}>
+                    选择文件
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      style={styles.fileInput}
+                    />
+                  </label>
+                  <p style={styles.hint}>支持 JPG、PNG 格式，建议大小不超过 2MB</p>
+                </div>
+              </div>
+
+              <div style={styles.accountSection}>
+                <div style={styles.formGroup}>
+                  <label htmlFor="username" style={styles.label}>用户名：</label>
+                  <input
+                    type="text"
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="请输入新的用户名"
+                    style={styles.input}
+                    maxLength={30}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label htmlFor="email" style={styles.label}>邮箱：</label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="请输入新的邮箱"
+                    style={styles.input}
+                    maxLength={100}
+                  />
+                </div>
+                {reduxUser.role !== 'admin' && (
+                  <div style={styles.formGroup}>
+                    <label htmlFor="nickname" style={styles.label}>排行榜昵称：</label>
+                    <div style={styles.inputWithStatus}>
+                      <input
+                        type="text"
+                        id="nickname"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        placeholder="请输入排行榜昵称"
+                        style={styles.input}
+                        maxLength={20}
+                      />
+                      {reduxUser.nicknameStatus && (
+                        <div style={{
+                          ...styles.inputStatusBadge,
+                          ...styles[`status${reduxUser.nicknameStatus.charAt(0).toUpperCase() + reduxUser.nicknameStatus.slice(1)}`]
+                        }}>
+                          {reduxUser.nicknameStatus === 'pending' ? '审核中' :
+                            reduxUser.nicknameStatus === 'approved' ? '已通过' : '已拒绝'}
+                        </div>
+                      )}
+                    </div>
+                    <p style={styles.hint}>
+                      昵称变更后需要管理员审核，审核通过后将在排行榜上显示
+                    </p>
+                  </div>
+                )}
+                <div style={styles.accountInfo}>
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoLabel}>角色：</span>
+                    <span style={styles.infoValue}>{reduxUser.role === 'admin' ? '管理员' : '普通用户'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.buttonContainer}>
+            <button type="submit" style={styles.submitButton}>
+              保存设置
+            </button>
+          </div>
+        </form>
+      )
+    },
+    {
+      key: '2',
+      label: '个人安全设置',
+      children: (
+        <form onSubmit={handlePasswordChange}>
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>密码修改</h3>
+            <div style={styles.formGroup}>
+              <label htmlFor="currentPassword" style={styles.label}>当前密码：</label>
+              <Input.Password
+                id="currentPassword"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="请输入当前密码"
+                style={styles.input}
+                maxLength={30}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label htmlFor="newPassword" style={styles.label}>新密码：</label>
+              <Input.Password
+                id="newPassword"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="请输入新密码"
+                style={styles.input}
+                maxLength={30}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label htmlFor="confirmPassword" style={styles.label}>确认新密码：</label>
+              <Input.Password
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="请确认新密码"
+                style={styles.input}
+                maxLength={30}
+              />
+              <p style={styles.hint}>
+                留空则不修改密码
+              </p>
+            </div>
+            <div style={styles.buttonContainer}>
+              <button type="submit" style={styles.submitButton}>
+                修改密码
+              </button>
+            </div>
+          </div>
+        </form>
+      )
+    }
+  ];
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -179,174 +349,7 @@ const UserSettings = () => {
       )}
       
       <div style={styles.formContainer}>
-        <Tabs activeKey={activeTab} onChange={setActiveTab}>
-          <Tabs.TabPane tab="个人设置" key="1">
-            <form onSubmit={handleSubmit}>
-              {/* 头像设置和账号信息 */}
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>个人信息</h3>
-                <div style={styles.profileSection}>
-                  {/* 头像设置 */}
-                  <div style={styles.avatarSection}>
-                    <div style={styles.avatarPreview}>
-                    <img 
-                      src={avatar || 'https://via.placeholder.com/150'} 
-                      alt="头像" 
-                      style={styles.avatar}
-                    />
-                    {uploading && (
-                      <div style={styles.uploadingOverlay}>
-                        <div style={styles.uploadingText}>上传中...</div>
-                      </div>
-                    )}
-                    {/* 头像审核状态标签 */}
-                    {reduxUser.avatarStatus && reduxUser.role !== 'admin' && (
-                      <div style={{
-                        ...styles.avatarStatusBadge,
-                        ...styles[`avatarStatus${reduxUser.avatarStatus.charAt(0).toUpperCase() + reduxUser.avatarStatus.slice(1)}`]
-                      }}>
-                        {reduxUser.avatarStatus === 'pending' ? '审核中' : 
-                         reduxUser.avatarStatus === 'approved' ? '已通过' : '已拒绝'}
-                      </div>
-                    )}
-                  </div>
-                    <div style={styles.avatarUpload}>
-                      <label style={styles.uploadButton}>
-                        选择文件
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleAvatarChange}
-                          style={styles.fileInput}
-                        />
-                      </label>
-                      <p style={styles.hint}>支持 JPG、PNG 格式，建议大小不超过 2MB</p>
-                    </div>
-                  </div>
-                  
-                  {/* 账号信息 */}
-                  <div style={styles.accountSection}>
-                    <div style={styles.formGroup}>
-                      <label htmlFor="username" style={styles.label}>用户名：</label>
-                      <input
-                        type="text"
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="请输入新的用户名"
-                        style={styles.input}
-                        maxLength={30}
-                      />
-                    </div>
-                    <div style={styles.formGroup}>
-                      <label htmlFor="email" style={styles.label}>邮箱：</label>
-                      <input
-                        type="email"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="请输入新的邮箱"
-                        style={styles.input}
-                        maxLength={100}
-                      />
-                    </div>
-                    {/* 昵称设置 */}
-                    {reduxUser.role !== 'admin' && (
-                      <div style={styles.formGroup}>
-                        <label htmlFor="nickname" style={styles.label}>排行榜昵称：</label>
-                        <div style={styles.inputWithStatus}>
-                          <input 
-                            type="text" 
-                            id="nickname" 
-                            value={nickname} 
-                            onChange={(e) => setNickname(e.target.value)}
-                            placeholder="请输入排行榜昵称"
-                            style={styles.input}
-                            maxLength={20}
-                          />
-                          {reduxUser.nicknameStatus && (
-                            <div style={{
-                              ...styles.inputStatusBadge,
-                              ...styles[`status${reduxUser.nicknameStatus.charAt(0).toUpperCase() + reduxUser.nicknameStatus.slice(1)}`]
-                            }}>
-                              {reduxUser.nicknameStatus === 'pending' ? '审核中' : 
-                               reduxUser.nicknameStatus === 'approved' ? '已通过' : '已拒绝'}
-                            </div>
-                          )}
-                        </div>
-                        <p style={styles.hint}>
-                          昵称变更后需要管理员审核，审核通过后将在排行榜上显示
-                        </p>
-                      </div>
-                    )}
-                    <div style={styles.accountInfo}>
-                      <div style={styles.infoItem}>
-                        <span style={styles.infoLabel}>角色：</span>
-                        <span style={styles.infoValue}>{reduxUser.role === 'admin' ? '管理员' : '普通用户'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-
-              <div style={styles.buttonContainer}>
-                <button type="submit" style={styles.submitButton}>
-                  保存设置
-                </button>
-              </div>
-            </form>
-          </Tabs.TabPane>
-          <Tabs.TabPane tab="个人安全设置" key="2">
-            <form onSubmit={handlePasswordChange}>
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>密码修改</h3>
-                <div style={styles.formGroup}>
-                  <label htmlFor="currentPassword" style={styles.label}>当前密码：</label>
-                  <Input.Password 
-                    id="currentPassword" 
-                    value={currentPassword} 
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="请输入当前密码"
-                    style={styles.input}
-                    maxLength={30}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label htmlFor="newPassword" style={styles.label}>新密码：</label>
-                  <Input.Password 
-                    id="newPassword" 
-                    value={newPassword} 
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="请输入新密码"
-                    style={styles.input}
-                    maxLength={30}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label htmlFor="confirmPassword" style={styles.label}>确认新密码：</label>
-                  <Input.Password 
-                    id="confirmPassword" 
-                    value={confirmPassword} 
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="请确认新密码"
-                    style={styles.input}
-                    maxLength={30}
-                  />
-                  <p style={styles.hint}>
-                    留空则不修改密码
-                  </p>
-                </div>
-                <div style={styles.buttonContainer}>
-                  <button type="submit" style={styles.submitButton}>
-                    修改密码
-                  </button>
-                </div>
-              </div>
-            </form>
-          </Tabs.TabPane>
-        </Tabs>
+        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
       </div>
     </div>
   );

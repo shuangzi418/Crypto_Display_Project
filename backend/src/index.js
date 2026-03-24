@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
@@ -8,9 +7,15 @@ const path = require('path');
 const envPath = path.resolve(__dirname, '..', '.env');
 dotenv.config({ path: envPath });
 
+const { sequelize } = require('./models');
+const { ensureDatabase } = require('./config/ensureDatabase');
+const { ensureSchemaCompatibility } = require('./config/ensureSchemaCompatibility');
+const { bootstrapAdminUser } = require('./services/adminBootstrap');
+
 // 初始化Express应用
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
+const forceHttps = process.env.FORCE_HTTPS === 'true';
 const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
   .filter(Boolean)
   .flatMap((value) => value.split(','))
@@ -26,7 +31,7 @@ const allowedOrigins = Array.from(new Set([
 
 // 在生产环境信任反向代理并强制HTTPS
 app.enable('trust proxy');
-if (process.env.NODE_ENV === 'production') {
+if (isProduction && forceHttps) {
   app.use((req, res, next) => {
     if (!req.secure) {
       return res.redirect(`https://${req.headers.host}${req.url}`);
@@ -64,32 +69,19 @@ app.use((req, res, next) => {
 });
 
 // 数据库连接
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  useCreateIndex: true,
-  useFindAndModify: false
-}).then(async () => {
-  const { ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_USERNAME = 'admin' } = process.env;
-
-  if (ADMIN_EMAIL && ADMIN_PASSWORD) {
-    const User = require('./models/User');
-    const adminExists = await User.findOne({ email: ADMIN_EMAIL });
-    if (!adminExists) {
-      await User.create({
-        username: ADMIN_USERNAME,
-        email: ADMIN_EMAIL,
-        password: ADMIN_PASSWORD,
-        role: 'admin'
-      });
-      console.log(`Initialized admin user: ${ADMIN_EMAIL}`);
-    } else {
-      console.log(`Admin bootstrap skipped, user already exists: ${ADMIN_EMAIL}`);
-    }
+const ready = (async () => {
+  try {
+    await ensureDatabase();
+    await sequelize.authenticate();
+    await sequelize.sync({ force: process.env.NODE_ENV === 'test' });
+    await ensureSchemaCompatibility();
+    await bootstrapAdminUser();
+    console.log('数据库连接成功');
+  } catch (error) {
+    console.error('数据库连接失败:', error);
+    throw error;
   }
-}).catch(err => {
-  console.error('数据库连接失败:', err);
-});
+})();
 
 // 路由
 app.get('/', (req, res) => {
@@ -127,13 +119,30 @@ app.use('/api/users', rankingRoutes);
 const messageRoutes = require('./routes/messageRoutes');
 app.use('/api/messages', messageRoutes);
 
+app.use((error, req, res, next) => {
+  if (!error) {
+    return next();
+  }
+
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ message: '上传文件不能超过 5MB' });
+  }
+
+  return res.status(500).json({ message: error.message || 'Server error' });
+});
+
 // 导出app
 module.exports = app;
+module.exports.ready = ready;
 
 // 启动服务器（仅在直接运行时）
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`服务器运行在端口 ${PORT}`);
+  ready.then(() => {
+    app.listen(PORT, () => {
+      console.log(`服务器运行在端口 ${PORT}`);
+    });
+  }).catch(() => {
+    process.exit(1);
   });
 }

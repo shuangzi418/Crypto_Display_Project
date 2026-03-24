@@ -1,154 +1,276 @@
-const Competition = require('../models/Competition');
+const { Op } = require('sequelize');
+const {
+  Competition,
+  CompetitionParticipant,
+  Question,
+  User
+} = require('../models');
+const { sanitizeInput } = require('../utils/sanitize');
+const { serializeQuestions } = require('../utils/questionSerializer');
 
-// 安全处理函数，防止 XSS 攻击
-const sanitizeInput = (input) => {
-  if (typeof input === 'string') {
-    return input.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const competitionInclude = [
+  {
+    model: Question,
+    as: 'questions',
+    through: { attributes: [] }
   }
-  return input;
-};
+];
 
-// 添加新竞赛
-exports.addCompetition = async (req, res) => {
-  // 检查是否是管理员
+const competitionDetailInclude = [
+  ...competitionInclude,
+  {
+    model: User,
+    as: 'participants',
+    attributes: ['id', 'username', 'nickname', 'nicknameStatus', 'avatar', 'avatarStatus'],
+    through: {
+      attributes: ['score', 'completed']
+    }
+  }
+];
+
+const ensureAdmin = (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied' });
+    res.status(403).json({ message: 'Access denied' });
+    return false;
   }
 
-  // 安全处理输入
-  const { title, description, startDate, endDate, questions } = req.body;
-  const sanitizedData = {
-    title: sanitizeInput(title),
-    description: sanitizeInput(description),
-    startDate,
-    endDate,
-    questions,
-    status: 'upcoming'
+  return true;
+};
+
+const mapCompetition = (competition) => {
+  const plainCompetition = competition.toJSON();
+
+  if (Array.isArray(plainCompetition.questions)) {
+    plainCompetition.questions = serializeQuestions(plainCompetition.questions);
+  }
+
+  if (Array.isArray(plainCompetition.participants)) {
+    plainCompetition.participants = plainCompetition.participants.map((participant) => ({
+      user: {
+        _id: participant._id,
+        id: participant.id,
+        username: participant.username,
+        nickname: participant.nickname,
+        nicknameStatus: participant.nicknameStatus,
+        avatar: participant.avatar,
+        avatarStatus: participant.avatarStatus
+      },
+      score: participant.CompetitionParticipant ? participant.CompetitionParticipant.score : 0,
+      completed: participant.CompetitionParticipant ? participant.CompetitionParticipant.completed : false
+    }));
+  }
+
+  return plainCompetition;
+};
+
+const loadQuestions = async (questionIds) => {
+  const uniqueIds = Array.from(new Set((questionIds || []).map((id) => String(id).trim()).filter(Boolean)));
+
+  if (uniqueIds.length === 0) {
+    throw new Error('请至少选择一道题目');
+  }
+
+  const questions = await Question.findAll({
+    where: {
+      id: uniqueIds
+    }
+  });
+
+  if (questions.length !== uniqueIds.length) {
+    throw new Error('包含不存在的题目');
+  }
+
+  return uniqueIds.map((id) => questions.find((question) => String(question.id) === String(id)));
+};
+
+const normalizeCompetitionPayload = async (payload, allowStatusOverride = true) => {
+  const title = sanitizeInput(payload.title);
+  const description = sanitizeInput(payload.description);
+  const startDate = new Date(payload.startDate);
+  const endDate = new Date(payload.endDate);
+  const status = payload.status || 'upcoming';
+
+  if (!title) {
+    throw new Error('竞赛标题不能为空');
+  }
+
+  if (!description) {
+    throw new Error('竞赛描述不能为空');
+  }
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new Error('竞赛时间范围无效');
+  }
+
+  if (endDate <= startDate) {
+    throw new Error('竞赛结束时间必须晚于开始时间');
+  }
+
+  if (!['upcoming', 'active', 'ended'].includes(status)) {
+    throw new Error('竞赛状态无效');
+  }
+
+  const questions = await loadQuestions(payload.questions);
+  const totalPoints = questions.reduce((sum, question) => sum + question.points, 0);
+
+  return {
+    values: {
+      title,
+      description,
+      startDate,
+      endDate,
+      status: allowStatusOverride ? status : 'upcoming',
+      totalPoints
+    },
+    questions
   };
+};
+
+exports.addCompetition = async (req, res) => {
+  if (!ensureAdmin(req, res)) {
+    return;
+  }
 
   try {
-    const competition = await Competition.create(sanitizedData);
-    res.status(201).json(competition);
+    const normalized = await normalizeCompetitionPayload(req.body);
+    const competition = await Competition.create(normalized.values);
+    await competition.setQuestions(normalized.questions.map((question) => question.id));
+
+    const createdCompetition = await Competition.findByPk(competition.id, {
+      include: competitionInclude
+    });
+
+    res.status(201).json(createdCompetition);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
-// 获取竞赛列表
 exports.getCompetitions = async (req, res) => {
-  const { status, search } = req.query;
+  const where = {};
+
+  if (req.query.status) {
+    where.status = req.query.status;
+  }
+
+  if (req.query.search) {
+    const keyword = `%${req.query.search.trim()}%`;
+    where[Op.or] = [
+      { title: { [Op.like]: keyword } },
+      { description: { [Op.like]: keyword } }
+    ];
+  }
 
   try {
-    let query = {};
+    const competitions = await Competition.findAll({
+      where,
+      include: competitionInclude,
+      order: [['startDate', 'DESC']]
+    });
 
-    if (status) {
-      query.status = status;
-    }
-    
-    // 如果有搜索参数，构建搜索条件
-    if (search) {
-      query = {
-        ...query,
-        $or: [
-          { title: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } }
-        ]
-      };
-    }
-
-    const competitions = await Competition.find(query)
-      .populate('questions', '-__v')
-      .sort({ startDate: -1 });
-
-    res.json(competitions);
+    res.json(competitions.map((competition) => mapCompetition(competition)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 获取单个竞赛
 exports.getCompetitionById = async (req, res) => {
   try {
-    const competition = await Competition.findById(req.params.id)
-      .populate('questions', '-__v')
-      .populate('participants.user', 'username');
+    const competition = await Competition.findByPk(req.params.id, {
+      include: competitionDetailInclude
+    });
 
-    if (competition) {
-      res.json(competition);
-    } else {
-      res.status(404).json({ message: 'Competition not found' });
+    if (!competition) {
+      return res.status(404).json({ message: 'Competition not found' });
     }
+
+    res.json(mapCompetition(competition));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 更新竞赛
 exports.updateCompetition = async (req, res) => {
-  // 检查是否是管理员
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied' });
+  if (!ensureAdmin(req, res)) {
+    return;
   }
 
-  // 安全处理输入
-  const sanitizedData = {};
-  if (req.body.title) sanitizedData.title = sanitizeInput(req.body.title);
-  if (req.body.description) sanitizedData.description = sanitizeInput(req.body.description);
-  if (req.body.startDate) sanitizedData.startDate = req.body.startDate;
-  if (req.body.endDate) sanitizedData.endDate = req.body.endDate;
-  if (Array.isArray(req.body.questions)) sanitizedData.questions = req.body.questions;
-  if (req.body.status) sanitizedData.status = req.body.status;
-
   try {
-    const competition = await Competition.findById(req.params.id);
+    const competition = await Competition.findByPk(req.params.id, {
+      include: competitionInclude
+    });
 
-    if (competition) {
-      const updatedCompetition = await Competition.findByIdAndUpdate(req.params.id, sanitizedData, { new: true, select: '-__v' });
-      res.json(updatedCompetition);
-    } else {
-      res.status(404).json({ message: 'Competition not found' });
+    if (!competition) {
+      return res.status(404).json({ message: 'Competition not found' });
     }
+
+    const normalized = await normalizeCompetitionPayload({
+      title: req.body.title !== undefined ? req.body.title : competition.title,
+      description: req.body.description !== undefined ? req.body.description : competition.description,
+      startDate: req.body.startDate !== undefined ? req.body.startDate : competition.startDate,
+      endDate: req.body.endDate !== undefined ? req.body.endDate : competition.endDate,
+      questions: req.body.questions !== undefined
+        ? req.body.questions
+        : competition.questions.map((question) => question.id),
+      status: req.body.status !== undefined ? req.body.status : competition.status
+    });
+
+    await competition.update(normalized.values);
+    await competition.setQuestions(normalized.questions.map((question) => question.id));
+
+    const updatedCompetition = await Competition.findByPk(competition.id, {
+      include: competitionInclude
+    });
+
+    res.json(updatedCompetition);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
-// 删除竞赛
 exports.deleteCompetition = async (req, res) => {
-  // 检查是否是管理员
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied' });
+  if (!ensureAdmin(req, res)) {
+    return;
   }
 
   try {
-    const competition = await Competition.findById(req.params.id);
+    const competition = await Competition.findByPk(req.params.id);
 
-    if (competition) {
-      await competition.remove();
-      res.json({ message: 'Competition removed' });
-    } else {
-      res.status(404).json({ message: 'Competition not found' });
+    if (!competition) {
+      return res.status(404).json({ message: 'Competition not found' });
     }
+
+    await CompetitionParticipant.destroy({ where: { competitionId: competition.id } });
+    await competition.setQuestions([]);
+    await competition.destroy();
+
+    res.json({ message: 'Competition removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 更新竞赛状态
 exports.updateCompetitionStatus = async (req, res) => {
   try {
-    const competitions = await Competition.find();
+    const competitions = await Competition.findAll();
     const now = new Date();
 
-    for (const competition of competitions) {
+    await Promise.all(competitions.map(async (competition) => {
+      let nextStatus = competition.status;
+
       if (competition.startDate <= now && competition.endDate >= now) {
-        competition.status = 'active';
-        await competition.save();
+        nextStatus = 'active';
       } else if (competition.endDate < now) {
-        competition.status = 'ended';
+        nextStatus = 'ended';
+      } else if (competition.startDate > now) {
+        nextStatus = 'upcoming';
+      }
+
+      if (nextStatus !== competition.status) {
+        competition.status = nextStatus;
         await competition.save();
       }
-    }
+    }));
 
     res.json({ message: 'Competition statuses updated' });
   } catch (error) {

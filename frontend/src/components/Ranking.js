@@ -3,7 +3,6 @@ import { Card, Table, Spin, Select, Tabs } from 'antd';
 import api from '../axios';
 
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 const Ranking = () => {
   const [ranking, setRanking] = useState([]);
@@ -151,50 +150,59 @@ const Ranking = () => {
     return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', padding: '40px' }} />;
   }
 
-  return (
-    <div style={{ padding: '24px' }}>
-      <h1>排行榜</h1>
-      
-      <Tabs defaultActiveKey="1">
-        <TabPane tab="总排行榜" key="1">
-          <Card>
-            <Table 
-              columns={rankingColumns} 
-              dataSource={ranking} 
+  const tabItems = [
+    {
+      key: '1',
+      label: '总排行榜',
+      children: (
+        <Card>
+          <Table
+            columns={rankingColumns}
+            dataSource={ranking}
+            rowKey="userId"
+            pagination={{ pageSize: 10 }}
+          />
+        </Card>
+      )
+    },
+    {
+      key: '2',
+      label: '竞赛排行榜',
+      children: (
+        <Card>
+          <div style={{ marginBottom: '20px' }}>
+            <Select
+              placeholder="选择竞赛"
+              style={{ width: 300 }}
+              onChange={setSelectedCompetition}
+              value={selectedCompetition}
+            >
+              {competitions.map((competition) => (
+                <Option key={competition._id} value={competition._id}>
+                  {competition.title}
+                </Option>
+              ))}
+            </Select>
+          </div>
+
+          {selectedCompetition && (
+            <Table
+              columns={competitionRankingColumns}
+              dataSource={competitionRanking}
               rowKey="userId"
               pagination={{ pageSize: 10 }}
             />
-          </Card>
-        </TabPane>
-        
-        <TabPane tab="竞赛排行榜" key="2">
-          <Card>
-            <div style={{ marginBottom: '20px' }}>
-              <Select
-                placeholder="选择竞赛"
-                style={{ width: 300 }}
-                onChange={setSelectedCompetition}
-                value={selectedCompetition}
-              >
-                {competitions.map(competition => (
-                  <Option key={competition._id} value={competition._id}>
-                    {competition.title}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-            
-            {selectedCompetition && (
-              <Table 
-                columns={competitionRankingColumns} 
-                dataSource={competitionRanking} 
-                rowKey="userId"
-                pagination={{ pageSize: 10 }}
-              />
-            )}
-          </Card>
-        </TabPane>
-      </Tabs>
+          )}
+        </Card>
+      )
+    }
+  ];
+
+  return (
+    <div style={{ padding: '24px' }}>
+      <h1>排行榜</h1>
+
+      <Tabs defaultActiveKey="1" items={tabItems} />
     </div>
   );
 };

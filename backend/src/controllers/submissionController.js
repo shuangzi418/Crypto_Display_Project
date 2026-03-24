@@ -1,207 +1,285 @@
-const Submission = require('../models/Submission');
-const Question = require('../models/Question');
-const User = require('../models/User');
-const Competition = require('../models/Competition');
+const { sequelize, Submission, Question, User, Competition, CompetitionParticipant } = require('../models');
+const { serializeSubmission } = require('../utils/questionSerializer');
 
-// 提交答案
+const PRACTICE_COMPETITION_ID = 0;
+
+const buildSubmissionResponse = (submission, question, extra = {}) => ({
+  submission: serializeSubmission(submission),
+  correctAnswer: question.correctAnswer,
+  points: extra.points || 0,
+  alreadySubmitted: Boolean(extra.alreadySubmitted),
+  ...(extra.additional || {})
+});
+
+const findExistingSubmission = ({ userId, questionId, competitionId }) => {
+  return Submission.findOne({
+    where: {
+      userId,
+      questionId,
+      competitionId
+    }
+  });
+};
+
 exports.submitAnswer = async (req, res) => {
   const { questionId, answer } = req.body;
+
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  const userId = req.user.id;
 
   try {
-    // 查找题目
-    const question = await Question.findById(questionId);
+    const question = await Question.findByPk(questionId);
+
     if (!question) {
       return res.status(404).json({ message: 'Question not found' });
     }
 
-    // 检查答案是否正确
-    const isCorrect = answer === question.correctAnswer;
+    const normalizedAnswer = Number(answer);
+    const isCorrect = normalizedAnswer === question.correctAnswer;
     const points = isCorrect ? question.points : 0;
 
-    // 创建答题记录
-    const submission = await Submission.create({
-      user: userId,
-      question: questionId,
-      answer,
-      isCorrect,
-      points
+    const existingSubmission = await findExistingSubmission({
+      userId: req.user.id,
+      questionId: question.id,
+      competitionId: PRACTICE_COMPETITION_ID
     });
 
-    // 更新用户分数
-    if (isCorrect) {
-      await User.findByIdAndUpdate(userId, {
-        $inc: { score: points }
-      });
+    if (existingSubmission) {
+      return res.json(buildSubmissionResponse(existingSubmission, question, {
+        alreadySubmitted: true,
+        points: 0
+      }));
     }
 
-    res.json({
-      submission,
-      correctAnswer: question.correctAnswer,
-      points
+    const submission = await sequelize.transaction(async (transaction) => {
+      const createdSubmission = await Submission.create({
+        userId: req.user.id,
+        questionId: question.id,
+        competitionId: PRACTICE_COMPETITION_ID,
+        answer: normalizedAnswer,
+        isCorrect,
+        points
+      }, { transaction });
+
+      if (isCorrect) {
+        await User.increment('score', {
+          by: points,
+          where: { id: req.user.id },
+          transaction
+        });
+      }
+
+      return createdSubmission;
     });
+
+    res.json(buildSubmissionResponse(submission, question, { points }));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 获取用户答题历史
 exports.getUserSubmissions = async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  try {
-    const submissions = await Submission.find({ user: req.user.id })
-      .populate('question')
-      .sort({ submittedAt: -1 });
 
-    res.json(submissions);
+  try {
+    const submissions = await Submission.findAll({
+      where: { userId: req.user.id },
+      include: [
+        {
+          model: Question,
+          as: 'question'
+        }
+      ],
+      order: [['submittedAt', 'DESC']]
+    });
+
+    res.json(submissions.map((submission) => serializeSubmission(submission)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 参加竞赛
 exports.joinCompetition = async (req, res) => {
   const { competitionId } = req.body;
+
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  const userId = req.user.id;
 
   try {
-    const competition = await Competition.findById(competitionId);
+    const competition = await Competition.findByPk(competitionId);
+
     if (!competition) {
       return res.status(404).json({ message: 'Competition not found' });
     }
 
-    // 检查用户是否已经参加
-    const alreadyParticipated = competition.participants.some(
-      participant => participant.user.toString() === userId
-    );
+    const existingParticipant = await CompetitionParticipant.findOne({
+      where: {
+        competitionId: competition.id,
+        userId: req.user.id
+      }
+    });
 
-    if (alreadyParticipated) {
-      return res.status(400).json({ message: 'You have already joined this competition' });
+    if (existingParticipant) {
+      return res.json({
+        message: 'Already joined this competition',
+        alreadyJoined: true
+      });
     }
 
-    // 添加用户到参与者列表
-    competition.participants.push({
-      user: userId,
+    await CompetitionParticipant.create({
+      competitionId: competition.id,
+      userId: req.user.id,
       score: 0,
       completed: false
     });
 
-    await competition.save();
-
-    res.json({ message: 'Successfully joined the competition' });
+    res.json({ message: 'Successfully joined the competition', alreadyJoined: false });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 提交竞赛答案
 exports.submitCompetitionAnswer = async (req, res) => {
   const { competitionId, questionId, answer } = req.body;
+
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  const userId = req.user.id;
 
   try {
-    // 查找竞赛
-    const competition = await Competition.findById(competitionId);
+    const competition = await Competition.findByPk(competitionId, {
+      include: [
+        {
+          model: Question,
+          as: 'questions',
+          through: { attributes: [] }
+        }
+      ]
+    });
+
     if (!competition) {
       return res.status(404).json({ message: 'Competition not found' });
     }
 
-    // 检查竞赛是否活跃
     if (competition.status !== 'active') {
       return res.status(400).json({ message: 'Competition is not active' });
     }
 
-    // 查找题目
-    const question = await Question.findById(questionId);
-    if (!question) {
-      return res.status(404).json({ message: 'Question not found' });
-    }
+    const question = competition.questions.find((item) => String(item.id) === String(questionId));
 
-    // 检查题目是否在竞赛中
-    if (!competition.questions.includes(questionId)) {
+    if (!question) {
       return res.status(400).json({ message: 'Question not in competition' });
     }
 
-    // 检查用户是否参加了竞赛
-    const participantIndex = competition.participants.findIndex(
-      participant => participant.user.toString() === userId
-    );
+    const participant = await CompetitionParticipant.findOne({
+      where: {
+        competitionId: competition.id,
+        userId: req.user.id
+      }
+    });
 
-    if (participantIndex === -1) {
+    if (!participant) {
       return res.status(400).json({ message: 'You are not a participant of this competition' });
     }
 
-    // 检查答案是否正确
-    const isCorrect = answer === question.correctAnswer;
+    const normalizedAnswer = Number(answer);
+    const isCorrect = normalizedAnswer === question.correctAnswer;
     const points = isCorrect ? question.points : 0;
 
-    // 创建答题记录
-    const submission = await Submission.create({
-      user: userId,
-      question: questionId,
-      answer,
-      isCorrect,
-      points
+    const existingSubmission = await findExistingSubmission({
+      userId: req.user.id,
+      questionId: question.id,
+      competitionId: competition.id
     });
 
-    // 更新竞赛中的用户分数
-    if (isCorrect) {
-      competition.participants[participantIndex].score += points;
-      await competition.save();
-
-      // 更新用户总分数
-      await User.findByIdAndUpdate(userId, {
-        $inc: { score: points }
-      });
+    if (existingSubmission) {
+      return res.json(buildSubmissionResponse(existingSubmission, question, {
+        alreadySubmitted: true,
+        points: 0,
+        additional: {
+          competitionScore: participant.score
+        }
+      }));
     }
 
-    res.json({
-      submission,
-      correctAnswer: question.correctAnswer,
-      points,
-      competitionScore: competition.participants[participantIndex].score
+    const result = await sequelize.transaction(async (transaction) => {
+      const submission = await Submission.create({
+        userId: req.user.id,
+        questionId: question.id,
+        competitionId: competition.id,
+        answer: normalizedAnswer,
+        isCorrect,
+        points
+      }, { transaction });
+
+      let competitionScore = participant.score;
+
+      if (isCorrect) {
+        participant.score += points;
+        await participant.save({ transaction });
+        competitionScore = participant.score;
+
+        await User.increment('score', {
+          by: points,
+          where: { id: req.user.id },
+          transaction
+        });
+      }
+
+      return {
+        submission,
+        competitionScore
+      };
     });
+
+    res.json(buildSubmissionResponse(result.submission, question, {
+      points,
+      additional: {
+        competitionScore: result.competitionScore
+      }
+    }));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 获取竞赛排行榜
 exports.getCompetitionRanking = async (req, res) => {
   const { competitionId } = req.params;
 
   try {
-    const competition = await Competition.findById(competitionId)
-      .populate('participants.user', 'username nickname nicknameStatus avatar avatarStatus')
-      .sort({ 'participants.score': -1 });
+    const competition = await Competition.findByPk(competitionId, {
+      include: [
+        {
+          model: User,
+          as: 'participants',
+          attributes: ['id', 'username', 'nickname', 'nicknameStatus', 'avatar', 'avatarStatus'],
+          through: {
+            attributes: ['score', 'completed']
+          }
+        }
+      ]
+    });
 
     if (!competition) {
       return res.status(404).json({ message: 'Competition not found' });
     }
 
-    // 排序参与者分数
     const ranking = competition.participants
-      .sort((a, b) => b.score - a.score)
+      .slice()
+      .sort((left, right) => right.CompetitionParticipant.score - left.CompetitionParticipant.score)
       .map((participant, index) => ({
         rank: index + 1,
-        userId: participant.user._id,
-        username: participant.user.username,
-        nickname: participant.user.nickname,
-        nicknameStatus: participant.user.nicknameStatus,
-        avatar: participant.user.avatar,
-        avatarStatus: participant.user.avatarStatus,
-        score: participant.score
+        userId: String(participant.id),
+        username: participant.username,
+        nickname: participant.nickname,
+        nicknameStatus: participant.nicknameStatus,
+        avatar: participant.avatar,
+        avatarStatus: participant.avatarStatus,
+        score: participant.CompetitionParticipant.score
       }));
 
     res.json(ranking);

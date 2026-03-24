@@ -1,87 +1,123 @@
-const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
-const { revokeToken } = require('../middleware/auth');
-const nodemailer = require('nodemailer');
+const { Op } = require('sequelize');
+const { validationResult } = require('express-validator');
+const { User } = require('../models');
+const { revokeToken, isTokenRevoked } = require('../middleware/auth');
+const { sanitizeInput, sanitizePlainText } = require('../utils/sanitize');
+
+const secureCookies = process.env.COOKIE_SECURE === 'true'
+  || (process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production');
 
 const authCookieOptions = (maxAge) => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  secure: secureCookies,
+  sameSite: secureCookies ? 'strict' : 'lax',
   maxAge
 });
 
-// 输入清理函数，防止NoSQL注入
-const sanitizeInput = (input) => {
-  if (typeof input === 'string') {
-    // 移除特殊字符，防止NoSQL注入
-    return input.replace(/[\$\{\}]/g, '').trim();
-  }
-  return input;
-};
-
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const AVATAR_URL_PATTERN = /^https?:\/\//i;
+const AVATAR_DATA_URL_PATTERN = /^data:image\/(png|jpe?g|gif|webp|bmp|svg\+xml);base64,[A-Za-z0-9+/=]+$/i;
 
-// 生成JWT令牌
-const generateToken = (id, ip, userAgent) => {
-  return jwt.sign({ 
-    id, 
-    ip, 
-    userAgent 
-  }, process.env.JWT_SECRET, {
-    expiresIn: '24h',
-  });
-};
-
-// 生成刷新令牌
-const generateRefreshToken = (id, ip, userAgent) => {
-  return jwt.sign({ 
-    id, 
-    ip, 
-    userAgent 
-  }, process.env.JWT_SECRET, {
-    expiresIn: '7d',
-  });
-};
-
-// 生成密码重置令牌
-const generateResetToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '1h', // 1小时过期
-  });
-};
-
-// 配置邮件发送器
-const transporter = nodemailer.createTransport({
-  host: 'smtp.qq.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+const generateToken = (id, ip, userAgent) => jwt.sign({
+  id,
+  ip,
+  userAgent,
+  tokenType: 'access'
+}, process.env.JWT_SECRET, {
+  expiresIn: '24h'
 });
 
-// 发送密码重置邮件
+const generateRefreshToken = (id, ip, userAgent) => jwt.sign({
+  id,
+  ip,
+  userAgent,
+  tokenType: 'refresh'
+}, process.env.JWT_SECRET, {
+  expiresIn: '7d'
+});
+
+const generateResetToken = (id) => jwt.sign({ id, tokenType: 'password-reset' }, process.env.JWT_SECRET, {
+  expiresIn: '1h'
+});
+
+let transporter;
+let nodemailer;
+
+const getTransporter = () => {
+  if (!transporter) {
+    if (!nodemailer) {
+      nodemailer = require('nodemailer');
+    }
+
+    transporter = nodemailer.createTransport({
+      host: 'smtp.qq.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+  }
+
+  return transporter;
+};
+
+const estimateBase64Bytes = (value) => {
+  const [, base64Payload = ''] = String(value).split(',');
+  const paddingLength = (base64Payload.match(/=*$/) || [''])[0].length;
+  return Math.max(0, Math.floor((base64Payload.length * 3) / 4) - paddingLength);
+};
+
+const normalizeAvatarInput = (avatar) => {
+  if (typeof avatar !== 'string') {
+    throw new Error('Avatar must be a string');
+  }
+
+  const normalizedAvatar = avatar.trim();
+
+  if (!normalizedAvatar) {
+    return '';
+  }
+
+  if (AVATAR_URL_PATTERN.test(normalizedAvatar)) {
+    if (normalizedAvatar.length > 2048) {
+      throw new Error('Avatar URL is too long');
+    }
+
+    return sanitizeInput(normalizedAvatar);
+  }
+
+  if (!AVATAR_DATA_URL_PATTERN.test(normalizedAvatar)) {
+    throw new Error('Avatar must be a valid image data URL or http(s) URL');
+  }
+
+  if (estimateBase64Bytes(normalizedAvatar) > MAX_AVATAR_BYTES) {
+    throw new Error('Avatar file cannot exceed 2MB');
+  }
+
+  return normalizedAvatar;
+};
+
 const sendResetEmail = async (email, resetToken) => {
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
-  
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: '密码重置请求',
-    html: `
-      <h1>密码重置请求</h1>
-      <p>您收到此邮件是因为有人请求重置您的密码。</p>
-      <p>请点击以下链接重置密码：</p>
-      <a href="${resetUrl}">${resetUrl}</a>
-      <p>如果您没有请求重置密码，请忽略此邮件。</p>
-      <p>此链接将在1小时后过期。</p>
-    `
-  };
-  
+
   try {
-    await transporter.sendMail(mailOptions);
+    await getTransporter().sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: '密码重置请求',
+      html: `
+        <h1>密码重置请求</h1>
+        <p>您收到此邮件是因为有人请求重置您的密码。</p>
+        <p>请点击以下链接重置密码：</p>
+        <a href="${resetUrl}">${resetUrl}</a>
+        <p>如果您没有请求重置密码，请忽略此邮件。</p>
+        <p>此链接将在1小时后过期。</p>
+      `
+    });
     return true;
   } catch (error) {
     console.error('邮件发送失败:', error);
@@ -89,17 +125,22 @@ const sendResetEmail = async (email, resetToken) => {
   }
 };
 
-const buildAuthResponse = (user, req, res) => {
-  const ip = req.ip;
-  const userAgent = req.get('User-Agent');
-  const token = generateToken(user._id, ip, userAgent);
-  const refreshToken = generateRefreshToken(user._id, ip, userAgent);
+const parseCookies = (cookieHeader) => {
+  if (!cookieHeader) {
+    return {};
+  }
 
-  res.cookie('token', token, authCookieOptions(24 * 60 * 60 * 1000));
-  res.cookie('refreshToken', refreshToken, authCookieOptions(7 * 24 * 60 * 60 * 1000));
+  return cookieHeader.split(';').reduce((accumulator, part) => {
+    const [key, ...rest] = part.trim().split('=');
+    accumulator[key] = decodeURIComponent(rest.join('='));
+    return accumulator;
+  }, {});
+};
 
-  return {
-    _id: user._id,
+const serializeUser = (user, includeToken) => {
+  const response = {
+    _id: String(user.id),
+    id: user.id,
     username: user.username,
     email: user.email,
     role: user.role,
@@ -108,201 +149,202 @@ const buildAuthResponse = (user, req, res) => {
     avatar: user.avatar,
     avatarStatus: user.avatarStatus,
     nicknameStatus: user.nicknameStatus,
-    token
+    createdAt: user.createdAt
   };
+
+  if (includeToken) {
+    response.token = includeToken;
+  }
+
+  return response;
 };
 
-// 注册新用户
+const buildAuthResponse = (user, req, res) => {
+  const ip = req.ip;
+  const userAgent = req.get('User-Agent');
+  const token = generateToken(user.id, ip, userAgent);
+  const refreshToken = generateRefreshToken(user.id, ip, userAgent);
+
+  res.cookie('token', token, authCookieOptions(24 * 60 * 60 * 1000));
+  res.cookie('refreshToken', refreshToken, authCookieOptions(7 * 24 * 60 * 60 * 1000));
+
+  return serializeUser(user, token);
+};
+
 exports.registerUser = async (req, res) => {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { username, email, password } = req.body;
+  const username = sanitizePlainText(req.body.username);
+  const email = sanitizePlainText(req.body.email).toLowerCase();
+  const { password } = req.body;
 
   try {
-    // 清理输入，防止NoSQL注入
-    const sanitizedEmail = sanitizeInput(email);
-    const sanitizedUsername = sanitizeInput(username);
-    
-    const userExists = await User.findOne({ email: sanitizedEmail });
+    const userExists = await User.findOne({ where: { email } });
 
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
     const user = await User.create({
-      username: sanitizedUsername,
-      email: sanitizedEmail,
+      username,
+      email,
       password,
       role: 'user'
     });
 
-    if (user) {
-      res.status(201).json(buildAuthResponse(user, req, res));
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
-    }
+    res.status(201).json(buildAuthResponse(user, req, res));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 用户登录
 exports.loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const email = sanitizePlainText(req.body.email).toLowerCase();
+  const { password } = req.body;
 
   try {
-    // 清理输入，防止NoSQL注入
-    const sanitizedEmail = sanitizeInput(email);
-    const user = await User.findOne({ email: sanitizedEmail });
+    const user = await User.findOne({ where: { email } });
 
-    if (user && (await user.matchPassword(password))) {
-      res.json(buildAuthResponse(user, req, res));
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+    if (user && await user.matchPassword(password)) {
+      return res.json(buildAuthResponse(user, req, res));
     }
+
+    res.status(401).json({ message: 'Invalid email or password' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 获取当前用户信息
 exports.getUserProfile = async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  const user = await User.findById(req.user.id);
 
-  if (user) {
-    res.json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      score: user.score,
-      nickname: user.nickname,
-      avatar: user.avatar,
-      avatarStatus: user.avatarStatus,
-      nicknameStatus: user.nicknameStatus
-    });
-  } else {
-    res.status(404).json({ message: 'User not found' });
+  const user = await User.findByPk(req.user.id);
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
   }
+
+  res.json(serializeUser(user));
 };
 
-// 更新用户信息
 exports.updateUserProfile = async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  const user = await User.findById(req.user.id);
 
-  if (user) {
-    const nextUsername = req.body.username ? sanitizeInput(req.body.username) : user.username;
-    const nextEmail = req.body.email ? sanitizeInput(req.body.email).toLowerCase() : user.email;
+  const user = await User.findByPk(req.user.id);
 
-    if (!nextUsername) {
-      return res.status(400).json({ message: 'Username is required' });
-    }
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
 
-    if (!isValidEmail(nextEmail)) {
-      return res.status(400).json({ message: 'Please provide a valid email address' });
-    }
+  const nextUsername = req.body.username ? sanitizePlainText(req.body.username) : user.username;
+  const nextEmail = req.body.email ? sanitizePlainText(req.body.email).toLowerCase() : user.email;
 
-    const existingUser = await User.findOne({
-      $or: [
+  if (!nextUsername) {
+    return res.status(400).json({ message: 'Username is required' });
+  }
+
+  if (!isValidEmail(nextEmail)) {
+    return res.status(400).json({ message: 'Please provide a valid email address' });
+  }
+
+  const existingUser = await User.findOne({
+    where: {
+      [Op.or]: [
         { username: nextUsername },
         { email: nextEmail }
       ],
-      _id: { $ne: user._id }
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username or email already in use' });
+      id: {
+        [Op.ne]: user.id
+      }
     }
+  });
 
-    user.username = nextUsername;
-    user.email = nextEmail;
-
-    if (req.body.password) {
-      if (!req.body.currentPassword) {
-        return res.status(400).json({ message: 'Current password is required' });
-      }
-
-      const passwordMatched = await user.matchPassword(req.body.currentPassword);
-      if (!passwordMatched) {
-        return res.status(400).json({ message: 'Current password is incorrect' });
-      }
-
-      if (req.body.password.length < 6) {
-        return res.status(400).json({ message: 'New password must be at least 6 characters' });
-      }
-
-      user.password = req.body.password;
-    }
-
-    const updatedUser = await user.save();
-
-    res.json(buildAuthResponse(updatedUser, req, res));
-  } else {
-    res.status(404).json({ message: 'User not found' });
+  if (existingUser) {
+    return res.status(400).json({ message: 'Username or email already in use' });
   }
+
+  user.username = nextUsername;
+  user.email = nextEmail;
+
+  if (req.body.password) {
+    if (!req.body.currentPassword) {
+      return res.status(400).json({ message: 'Current password is required' });
+    }
+
+    const passwordMatched = await user.matchPassword(req.body.currentPassword);
+
+    if (!passwordMatched) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    if (req.body.password.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    user.password = req.body.password;
+  }
+
+  const updatedUser = await user.save();
+  res.json(buildAuthResponse(updatedUser, req, res));
 };
 
-// 更新个人设置（头像和昵称）
 exports.updateUserSettings = async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  const user = await User.findById(req.user.id);
 
-  if (user) {
-    if (req.user.role !== 'admin') {
-      if (req.body.nickname) {
-        user.nickname = req.body.nickname;
-        user.nicknameStatus = 'pending';
-      }
-      if (req.body.avatar) {
-        user.avatar = req.body.avatar;
-        user.avatarStatus = 'pending';
-      }
-    } else {
-      if (req.body.nickname) {
-        user.nickname = req.body.nickname;
-        user.nicknameStatus = 'approved';
-      }
-      if (req.body.avatar) {
-        user.avatar = req.body.avatar;
-        user.avatarStatus = 'approved';
-      }
+  try {
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (req.body.nickname) {
+      user.nickname = sanitizeInput(req.body.nickname);
+      user.nicknameStatus = req.user.role === 'admin' ? 'approved' : 'pending';
+    }
+
+    if (req.body.avatar !== undefined) {
+      user.avatar = normalizeAvatarInput(req.body.avatar);
+      user.avatarStatus = req.user.role === 'admin' ? 'approved' : 'pending';
     }
 
     const updatedUser = await user.save();
 
     res.json({
-      _id: updatedUser._id,
+      _id: String(updatedUser.id),
+      id: updatedUser.id,
       username: updatedUser.username,
       nickname: updatedUser.nickname,
       avatar: updatedUser.avatar,
       avatarStatus: updatedUser.avatarStatus,
       nicknameStatus: updatedUser.nicknameStatus
     });
-  } else {
-    res.status(404).json({ message: 'User not found' });
+  } catch (error) {
+    const statusCode = error.message && error.message.startsWith('Avatar') ? 400 : 500;
+    res.status(statusCode).json({ message: error.message || 'Failed to update user settings' });
   }
 };
 
-// 审核用户昵称
 exports.approveNickname = async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(401).json({ message: 'Not authorized as an admin' });
   }
+
   const { userId, status } = req.body;
 
   try {
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -316,54 +358,59 @@ exports.approveNickname = async (req, res) => {
   }
 };
 
-// 获取待审核的用户昵称
 exports.getPendingNicknames = async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(401).json({ message: 'Not authorized as an admin' });
   }
 
   try {
-    const { search } = req.query;
-    let query = { nicknameStatus: 'pending', role: { $ne: 'admin' } };
-    
-    // 如果有搜索参数，构建搜索条件
-    if (search) {
-      query = {
-        ...query,
-        $or: [
-          { username: { $regex: search, $options: 'i' } },
-          { nickname: { $regex: search, $options: 'i' } }
-        ]
-      };
+    const where = {
+      nicknameStatus: 'pending',
+      role: {
+        [Op.ne]: 'admin'
+      }
+    };
+
+    if (req.query.search) {
+      const keyword = `%${req.query.search.trim()}%`;
+      where[Op.or] = [
+        { username: { [Op.like]: keyword } },
+        { nickname: { [Op.like]: keyword } }
+      ];
     }
-    
-    const users = await User.find(query).select('-password');
+
+    const users = await User.findAll({
+      where,
+      attributes: { exclude: ['password'] }
+    });
+
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 审核用户头像
 exports.approveAvatar = async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(401).json({ message: 'Not authorized as an admin' });
   }
+
   const { userId, status } = req.body;
 
   try {
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const oldStatus = user.avatarStatus;
     user.avatarStatus = status;
     await user.save();
 
-    // 发送通知
     const messageController = require('./messageController');
-    let title, content;
+    let title;
+    let content;
+
     if (status === 'approved') {
       title = '头像审核通过';
       content = '您的头像已通过审核，现在可以在排行榜上显示了。';
@@ -371,9 +418,9 @@ exports.approveAvatar = async (req, res) => {
       title = '头像审核拒绝';
       content = '您的头像未通过审核，请上传符合要求的头像。';
     }
-    
+
     if (title && content) {
-      await messageController.createMessage(userId, title, content, 'notification');
+      await messageController.createMessage(user.id, title, content, 'notification');
     }
 
     res.json({ message: 'Avatar status updated successfully', user });
@@ -382,44 +429,41 @@ exports.approveAvatar = async (req, res) => {
   }
 };
 
-// 获取待审核的用户头像
 exports.getPendingAvatars = async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(401).json({ message: 'Not authorized as an admin' });
   }
 
   try {
-    const { search } = req.query;
-    let query = { avatarStatus: 'pending', role: { $ne: 'admin' } };
-    
-    // 如果有搜索参数，构建搜索条件
-    if (search) {
-      query = {
-        ...query,
-        $or: [
-          { username: { $regex: search, $options: 'i' } }
-        ]
-      };
+    const where = {
+      avatarStatus: 'pending',
+      role: {
+        [Op.ne]: 'admin'
+      }
+    };
+
+    if (req.query.search) {
+      const keyword = `%${req.query.search.trim()}%`;
+      where[Op.or] = [
+        { username: { [Op.like]: keyword } }
+      ];
     }
-    
-    const users = await User.find(query).select('-password');
+
+    const users = await User.findAll({
+      where,
+      attributes: { exclude: ['password'] }
+    });
+
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 刷新令牌
 exports.refreshToken = async (req, res) => {
   let refreshToken = req.body && req.body.refreshToken;
+
   if (!refreshToken && req.headers && req.headers.cookie) {
-    const parseCookies = (cookieHeader) => {
-      return cookieHeader.split(';').reduce((acc, part) => {
-        const [key, ...rest] = part.trim().split('=');
-        acc[key] = decodeURIComponent(rest.join('='));
-        return acc;
-      }, {});
-    };
     const cookies = parseCookies(req.headers.cookie);
     refreshToken = cookies.refreshToken;
   }
@@ -429,32 +473,25 @@ exports.refreshToken = async (req, res) => {
   }
 
   try {
+    if (isTokenRevoked(refreshToken)) {
+      return res.status(401).json({ message: 'Refresh token has been revoked' });
+    }
+
     const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+
+    if (decoded.tokenType !== 'refresh') {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
+
+    const user = await User.findByPk(decoded.id);
 
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    const ip = req.ip;
-    const userAgent = req.get('User-Agent');
-    const token = generateToken(user._id, ip, userAgent);
-    const newRefreshToken = generateRefreshToken(user._id, ip, userAgent);
-
-    res.cookie('token', token, authCookieOptions(24 * 60 * 60 * 1000));
-    res.cookie('refreshToken', newRefreshToken, authCookieOptions(7 * 24 * 60 * 60 * 1000));
-
+    const response = buildAuthResponse(user, req, res);
     res.json({
-      _id: user._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      score: user.score,
-      nickname: user.nickname,
-      avatar: user.avatar,
-      avatarStatus: user.avatarStatus,
-      nicknameStatus: user.nicknameStatus,
-      token,
+      ...response,
       message: 'Token refreshed successfully'
     });
   } catch (error) {
@@ -462,42 +499,43 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
-// 登出用户
 exports.logout = async (req, res) => {
   try {
-    // 从请求头中获取token
     const authHeader = req.headers.authorization;
+    const cookies = parseCookies(req.headers.cookie);
+
     if (authHeader && authHeader.startsWith('Bearer')) {
       const token = authHeader.split(' ')[1];
-      // 将token添加到黑名单
       revokeToken(token);
     }
 
-    // 清除cookie
+    if (cookies.token) {
+      revokeToken(cookies.token);
+    }
+
+    if (cookies.refreshToken) {
+      revokeToken(cookies.refreshToken);
+    }
+
     res.clearCookie('token');
     res.clearCookie('refreshToken');
-
     res.json({ message: 'Successfully logged out' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 密码找回
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const email = sanitizePlainText(req.body.email).toLowerCase();
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // 生成密码重置令牌
-    const resetToken = generateResetToken(user._id);
-
-    // 发送重置邮件
+    const resetToken = generateResetToken(user.id);
     const emailSent = await sendResetEmail(email, resetToken);
 
     if (!emailSent) {
@@ -510,20 +548,26 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// 重置密码
 exports.resetPassword = async (req, res) => {
   const { token, password } = req.body;
 
   try {
-    // 验证重置令牌
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+
+    if (decoded.tokenType !== 'password-reset') {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    const user = await User.findByPk(decoded.id);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // 更新密码
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
     user.password = password;
     await user.save();
 
@@ -533,36 +577,40 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// 获取所有用户列表（管理员专用）
 exports.getUsers = async (req, res) => {
   try {
-    const { search } = req.query;
-    let query = {};
-    
-    // 如果有搜索参数，构建搜索条件
-    if (search) {
-      query = {
-        $or: [
-          { username: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } }
-        ]
-      };
+    const where = {};
+
+    if (req.query.search) {
+      const keyword = `%${req.query.search.trim()}%`;
+      where[Op.or] = [
+        { username: { [Op.like]: keyword } },
+        { email: { [Op.like]: keyword } }
+      ];
     }
-    
-    const users = await User.find(query).select('-password');
+
+    const users = await User.findAll({
+      where,
+      attributes: { exclude: ['password'] },
+      order: [['createdAt', 'DESC']]
+    });
+
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 修改用户角色（管理员专用）
 exports.updateUserRole = async (req, res) => {
   const { role } = req.body;
-  const { id } = req.params;
+
+  if (!['user', 'admin'].includes(role)) {
+    return res.status(400).json({ message: 'Invalid role' });
+  }
 
   try {
-    const user = await User.findById(id);
+    const user = await User.findByPk(req.params.id);
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }

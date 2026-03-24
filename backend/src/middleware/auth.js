@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User } = require('../models');
 
 // Token黑名单（开发环境使用内存存储，生产环境建议使用Redis）
 const tokenBlacklist = new Set();
@@ -14,57 +14,90 @@ const parseCookies = (cookieHeader) => {
   }, {});
 };
 
-const protect = async (req, res, next) => {
-  let token;
+const isTokenRevoked = (token) => tokenBlacklist.has(token);
 
-  if (
+const attachUser = async (decoded, req) => {
+  const user = await User.findByPk(decoded.id, {
+    attributes: { exclude: ['password'] }
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  req.user = user;
+  return user;
+};
+
+const authenticateToken = async (token, req, expectedType = 'access') => {
+  if (!token) {
+    return { ok: false, reason: 'missing' };
+  }
+
+  if (isTokenRevoked(token)) {
+    return { ok: false, reason: 'revoked' };
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.tokenType !== expectedType) {
+      return { ok: false, reason: 'type' };
+    }
+
+    const user = await attachUser(decoded, req);
+
+    if (!user) {
+      return { ok: false, reason: 'user' };
+    }
+
+    return { ok: true, user };
+  } catch (error) {
+    return { ok: false, reason: 'invalid' };
+  }
+};
+
+const protect = async (req, res, next) => {
+  const headerToken = (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
+  )
+    ? req.headers.authorization.split(' ')[1]
+    : null;
+  const cookies = parseCookies(req.headers.cookie);
+  const cookieToken = cookies.token || null;
+  const candidateTokens = [headerToken, cookieToken].filter(Boolean);
+  const attemptedTokens = new Set();
+  let failureMessage = 'Not authorized, no token';
 
-      // 检查token是否在黑名单中
-      if (tokenBlacklist.has(token)) {
-        return res.status(401).json({ message: 'Not authorized, token has been revoked' });
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
-        return res.status(401).json({ message: 'Not authorized, user not found' });
-      }
-
-      next();
-      return;
-    } catch (error) {
-      res.status(401).json({ message: 'Not authorized, token failed' });
-      return;
+  for (const token of candidateTokens) {
+    if (attemptedTokens.has(token)) {
+      continue;
     }
-  }
 
-  // 回退：从Cookie读取token
-  try {
-    const cookies = parseCookies(req.headers.cookie);
-    token = cookies.token;
-    if (token) {
-      if (tokenBlacklist.has(token)) {
-        return res.status(401).json({ message: 'Not authorized, token has been revoked' });
-      }
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
-        return res.status(401).json({ message: 'Not authorized, user not found' });
-      }
+    attemptedTokens.add(token);
+
+    const result = await authenticateToken(token, req);
+
+    if (result.ok) {
       next();
       return;
     }
-  } catch (error) {
-    return res.status(401).json({ message: 'Not authorized, token failed' });
+
+    switch (result.reason) {
+      case 'revoked':
+        failureMessage = 'Not authorized, token has been revoked';
+        break;
+      case 'user':
+        failureMessage = 'Not authorized, user not found';
+        break;
+      default:
+        failureMessage = 'Not authorized, token failed';
+        break;
+    }
   }
 
-  res.status(401).json({ message: 'Not authorized, no token' });
+  res.status(401).json({ message: failureMessage });
 };
 
 const admin = (req, res, next) => {
@@ -80,4 +113,4 @@ const revokeToken = (token) => {
   tokenBlacklist.add(token);
 };
 
-module.exports = { protect, admin, revokeToken };
+module.exports = { protect, admin, revokeToken, isTokenRevoked };

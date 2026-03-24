@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Card, Layout, Menu } from 'antd';
-import { Link, useRouteMatch, Switch, Route, useHistory } from 'react-router-dom';
+import { Link, useRouteMatch, Switch, Route, useHistory, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import UserManagement from './UserManagement';
 import CompetitionManagement from './CompetitionManagement';
@@ -13,6 +13,7 @@ const { Content, Sider } = Layout;
 const Admin = () => {
   const { path, url } = useRouteMatch();
   const history = useHistory();
+  const location = useLocation();
   const { isAuthenticated, user } = useSelector(state => state.user);
 
   // 检查用户是否登录和是否是管理员
@@ -22,30 +23,46 @@ const Admin = () => {
     }
   }, [isAuthenticated, user, history]);
 
+  const getSelectedMenuKey = () => {
+    if (location.pathname.includes('/competitions')) return 'competitions';
+    if (location.pathname.includes('/users')) return 'users';
+    if (location.pathname.includes('/nicknames')) return 'nicknames';
+    if (location.pathname.includes('/avatars')) return 'avatars';
+    return 'questions';
+  };
+
+  const menuItems = [
+    {
+      key: 'questions',
+      label: <Link to={`${url}/questions`}>题目管理</Link>
+    },
+    {
+      key: 'competitions',
+      label: <Link to={`${url}/competitions`}>竞赛管理</Link>
+    },
+    {
+      key: 'users',
+      label: <Link to={`${url}/users`}>用户管理</Link>
+    },
+    {
+      key: 'nicknames',
+      label: <Link to={`${url}/nicknames`}>昵称审核</Link>
+    },
+    {
+      key: 'avatars',
+      label: <Link to={`${url}/avatars`}>头像审核</Link>
+    }
+  ];
+
   return (
     <Layout style={{ minHeight: 600 }}>
       <Sider width={200} style={{ background: '#fff' }}>
         <Menu
           mode="inline"
-          defaultSelectedKeys={['1']}
+          selectedKeys={[getSelectedMenuKey()]}
+          items={menuItems}
           style={{ height: '100%', borderRight: 0 }}
-        >
-          <Menu.Item key="1">
-            <Link to={`${url}/questions`}>题目管理</Link>
-          </Menu.Item>
-          <Menu.Item key="2">
-            <Link to={`${url}/competitions`}>竞赛管理</Link>
-          </Menu.Item>
-          <Menu.Item key="3">
-            <Link to={`${url}/users`}>用户管理</Link>
-          </Menu.Item>
-          <Menu.Item key="4">
-            <Link to={`${url}/nicknames`}>昵称审核</Link>
-          </Menu.Item>
-          <Menu.Item key="5">
-            <Link to={`${url}/avatars`}>头像审核</Link>
-          </Menu.Item>
-        </Menu>
+        />
       </Sider>
       <Layout style={{ padding: '0 24px 24px' }}>
         <Content

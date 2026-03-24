@@ -34,10 +34,27 @@ export const loadUser = () => async dispatch => {
       type: USER_LOADED,
       payload: res.data
     });
+
+    return res.data;
   } catch (err) {
-    dispatch({
-      type: AUTH_ERROR
-    });
+    try {
+      const refreshRes = await api.post('/users/refresh-token');
+      persistToken(refreshRes.data.token);
+
+      dispatch({
+        type: LOGIN_SUCCESS,
+        payload: refreshRes.data
+      });
+
+      return refreshRes.data;
+    } catch (refreshErr) {
+      clearToken();
+      dispatch({
+        type: AUTH_ERROR
+      });
+
+      return null;
+    }
   }
 };
 
@@ -119,10 +136,14 @@ export const refreshToken = () => async dispatch => {
       type: LOGIN_SUCCESS,
       payload: res.data
     });
+
+    return res.data;
   } catch (err) {
     clearToken();
     dispatch({
       type: LOGOUT
     });
+
+    return null;
   }
 };

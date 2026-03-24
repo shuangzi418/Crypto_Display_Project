@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Switch, Route, Link, Redirect } from 'react-router-dom';
+import { BrowserRouter as Router, Switch, Route, Link, Redirect, useLocation } from 'react-router-dom';
 import { Layout, Menu, Spin } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadUser, logout, refreshToken } from './actions/userActions';
@@ -16,8 +16,17 @@ import Messages from './components/Messages';
 const { Header, Content, Footer } = Layout;
 
 function App() {
+  return (
+    <Router>
+      <AppShell />
+    </Router>
+  );
+}
+
+function AppShell() {
   const dispatch = useDispatch();
   const { isAuthenticated, user, loading } = useSelector(state => state.user);
+  const location = useLocation();
 
   // 加载用户信息
   useEffect(() => {
@@ -42,87 +51,112 @@ function App() {
     dispatch(logout());
   };
 
+  const getSelectedMenuKey = () => {
+    if (location.pathname.startsWith('/quiz')) return 'quiz';
+    if (location.pathname.startsWith('/ranking')) return 'ranking';
+    if (location.pathname.startsWith('/admin')) return 'admin';
+    if (location.pathname.startsWith('/settings')) return 'settings';
+    if (location.pathname.startsWith('/login')) return 'login';
+    if (location.pathname.startsWith('/register')) return 'register';
+    return 'home';
+  };
+
+  const menuItems = [
+    {
+      key: 'home',
+      label: <Link to="/">首页</Link>
+    },
+    {
+      key: 'quiz',
+      label: <Link to="/quiz">答题</Link>
+    },
+    {
+      key: 'ranking',
+      label: <Link to="/ranking">排行榜</Link>
+    }
+  ];
+
+  if (isAuthenticated && user && user.role === 'admin') {
+    menuItems.push({
+      key: 'admin',
+      label: <Link to="/admin">管理平台</Link>
+    });
+  }
+
+  if (isAuthenticated && user) {
+    menuItems.push(
+      {
+        key: 'settings',
+        label: <Link to="/settings">设置</Link>
+      },
+      {
+        key: 'logout',
+        label: `登出 (${user.username})`,
+        onClick: handleLogout
+      }
+    );
+  } else {
+    menuItems.push(
+      {
+        key: 'login',
+        label: <Link to="/login">登录</Link>
+      },
+      {
+        key: 'register',
+        label: <Link to="/register">注册</Link>
+      }
+    );
+  }
+
   return (
-    <Router>
-      <Layout className="layout">
-        <Header>
-          <div className="logo" />
-          <Menu theme="dark" mode="horizontal" defaultSelectedKeys={['1']}>
-            <Menu.Item key="1">
-              <Link to="/">首页</Link>
-            </Menu.Item>
-            <Menu.Item key="2">
-              <Link to="/quiz">答题</Link>
-            </Menu.Item>
-            <Menu.Item key="3">
-              <Link to="/ranking">排行榜</Link>
-            </Menu.Item>
-            {isAuthenticated && user && user.role === 'admin' && (
-              <Menu.Item key="4">
-                <Link to="/admin">管理平台</Link>
-              </Menu.Item>
-            )}
-            {isAuthenticated && user ? (
-              <>
-                <Menu.Item key={user.role === 'admin' ? "5" : "4"}>
-                  <Link to="/settings">设置</Link>
-                </Menu.Item>
-                <Menu.Item key={user.role === 'admin' ? "6" : "5"} onClick={handleLogout}>
-                  登出 ({user.username})
-                </Menu.Item>
-              </>
-            ) : (
-              <>
-                <Menu.Item key="4">
-                  <Link to="/login">登录</Link>
-                </Menu.Item>
-                <Menu.Item key="5">
-                  <Link to="/register">注册</Link>
-                </Menu.Item>
-              </>
-            )}
-          </Menu>
-        </Header>
-        <Content style={{ padding: '0 50px' }}>
-          <div className="site-layout-content">
-            <Switch>
-              <Route exact path="/">
-                <HomePage />
-              </Route>
-              <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading}>
-                <Quiz />
-              </PrivateRoute>
-              <Route path="/ranking">
-                <Ranking />
-              </Route>
-              <AdminRoute path="/admin" isAuthenticated={isAuthenticated} isLoading={loading} user={user}>
-                <Admin />
-              </AdminRoute>
-              <PublicRoute path="/login" isAuthenticated={isAuthenticated} isLoading={loading}>
-                <Login />
-              </PublicRoute>
-              <PublicRoute path="/register" isAuthenticated={isAuthenticated} isLoading={loading}>
-                <Register />
-              </PublicRoute>
-              <Route path="/forgot-password">
-                <ForgotPassword />
-              </Route>
-              <Route path="/reset-password/:token">
-                <ResetPassword />
-              </Route>
-              <PrivateRoute path="/settings" isAuthenticated={isAuthenticated} isLoading={loading}>
-                <UserSettings />
-              </PrivateRoute>
-            </Switch>
-          </div>
-        </Content>
-        <Footer style={{ textAlign: 'center' }}>
-          Cryptography Knowledge Quiz System ©2026
-        </Footer>
-      </Layout>
-      {/* 消息通知组件 */}
+    <Layout className="layout">
+      <Header>
+        <div className="logo" />
+        <Menu
+          theme="dark"
+          mode="horizontal"
+          selectedKeys={[getSelectedMenuKey()]}
+          items={menuItems}
+        />
+      </Header>
+      <Content style={{ padding: '0 50px' }}>
+        <div className="site-layout-content">
+          <Switch>
+            <Route exact path="/">
+              <HomePage />
+            </Route>
+            <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading}>
+              <Quiz />
+            </PrivateRoute>
+            <Route path="/ranking">
+              <Ranking />
+            </Route>
+            <AdminRoute path="/admin" isAuthenticated={isAuthenticated} isLoading={loading} user={user}>
+              <Admin />
+            </AdminRoute>
+            <PublicRoute path="/login" isAuthenticated={isAuthenticated} isLoading={loading}>
+              <Login />
+            </PublicRoute>
+            <PublicRoute path="/register" isAuthenticated={isAuthenticated} isLoading={loading}>
+              <Register />
+            </PublicRoute>
+            <Route path="/forgot-password">
+              <ForgotPassword />
+            </Route>
+            <Route path="/reset-password/:token">
+              <ResetPassword />
+            </Route>
+            <PrivateRoute path="/settings" isAuthenticated={isAuthenticated} isLoading={loading}>
+              <UserSettings />
+            </PrivateRoute>
+          </Switch>
+        </div>
+      </Content>
+      <Footer style={{ textAlign: 'center' }}>
+        Cryptography Knowledge Quiz System ©2026
+      </Footer>
       {isAuthenticated && <Messages />}
-    </Router>
+    </Layout>
   );
 }
 

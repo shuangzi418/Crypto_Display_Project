@@ -1,64 +1,54 @@
-// 加载环境变量
 require('dotenv').config();
 
-// 添加TextEncoder polyfill
 if (typeof TextEncoder === 'undefined') {
   global.TextEncoder = require('util').TextEncoder;
 }
 
 const request = require('supertest');
 const app = require('../src/index');
-const Competition = require('../src/models/Competition');
-const Question = require('../src/models/Question');
-const User = require('../src/models/User');
-const mongoose = require('mongoose');
+const { Competition, Question, User, CompetitionParticipant } = require('../src/models');
 
-// 测试竞赛功能
 describe('Competition Management', () => {
   let adminToken;
   let userToken;
+  let userId;
   let questionId;
   let competitionId;
 
-  // 在所有测试前清除数据库
   beforeAll(async () => {
+    await app.ready;
     await User.deleteMany({});
     await Question.deleteMany({});
     await Competition.deleteMany({});
   });
 
-  // 在所有测试后清除数据库
   afterAll(async () => {
     await User.deleteMany({});
     await Question.deleteMany({});
     await Competition.deleteMany({});
   });
 
-  // 在测试前创建一个管理员用户、一个普通用户、一个题目和一个竞赛
   beforeEach(async () => {
-    // 清除数据库
     await User.deleteMany({});
     await Question.deleteMany({});
     await Competition.deleteMany({});
 
-    // 创建管理员用户
     const uniqueAdminEmail = `admin${Date.now()}@example.com`;
-    const adminUser = await User.create({
+    await User.create({
       username: `admin${Date.now()}`,
       email: uniqueAdminEmail,
       password: 'password123',
       role: 'admin'
     });
 
-    // 创建普通用户
     const uniqueUserEmail = `test${Date.now()}@example.com`;
     const user = await User.create({
       username: `testuser${Date.now()}`,
       email: uniqueUserEmail,
       password: 'password123'
     });
+    userId = user.id;
 
-    // 登录获取token
     const adminLoginRes = await request(app)
       .post('/api/users/login')
       .send({
@@ -77,7 +67,6 @@ describe('Competition Management', () => {
 
     userToken = userLoginRes.body.token;
 
-    // 创建题目
     const question = await Question.create({
       title: 'Test Question',
       content: 'What is cryptography?',
@@ -88,22 +77,21 @@ describe('Competition Management', () => {
       points: 10
     });
 
-    questionId = question._id;
+    questionId = String(question.id);
 
-    // 创建竞赛
     const competition = await Competition.create({
       title: 'Test Competition',
       description: 'A test competition',
       startDate: new Date(),
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days later
-      questions: [questionId],
-      status: 'active'
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'active',
+      totalPoints: 10
     });
 
-    competitionId = competition._id;
+    await competition.setQuestions([question.id]);
+    competitionId = String(competition.id);
   });
 
-  // 测试添加竞赛
   test('should add a new competition', async () => {
     const res = await request(app)
       .post('/api/competitions')
@@ -112,7 +100,7 @@ describe('Competition Management', () => {
         title: 'New Competition',
         description: 'A new competition',
         startDate: new Date(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days later
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         questions: [questionId]
       });
 
@@ -120,16 +108,15 @@ describe('Competition Management', () => {
     expect(res.body.title).toBe('New Competition');
   });
 
-  // 测试获取竞赛列表
   test('should get competitions list', async () => {
     const res = await request(app)
       .get('/api/competitions');
 
     expect(res.statusCode).toBe(200);
     expect(res.body.length).toBe(1);
+    expect(res.body[0].questions[0].correctAnswer).toBeUndefined();
   });
 
-  // 测试参加竞赛
   test('should join a competition', async () => {
     const res = await request(app)
       .post('/api/submissions/competition/join')
@@ -142,9 +129,7 @@ describe('Competition Management', () => {
     expect(res.body.message).toBe('Successfully joined the competition');
   });
 
-  // 测试提交竞赛答案
-  test('should submit competition answer', async () => {
-    // 先参加竞赛
+  test('should allow idempotent competition join', async () => {
     await request(app)
       .post('/api/submissions/competition/join')
       .set('Authorization', `Bearer ${userToken}`)
@@ -152,7 +137,25 @@ describe('Competition Management', () => {
         competitionId
       });
 
-    // 提交竞赛答案
+    const secondJoinRes = await request(app)
+      .post('/api/submissions/competition/join')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        competitionId
+      });
+
+    expect(secondJoinRes.statusCode).toBe(200);
+    expect(secondJoinRes.body.alreadyJoined).toBe(true);
+  });
+
+  test('should submit competition answer', async () => {
+    await request(app)
+      .post('/api/submissions/competition/join')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        competitionId
+      });
+
     const res = await request(app)
       .post('/api/submissions/competition/submit')
       .set('Authorization', `Bearer ${userToken}`)
@@ -166,9 +169,49 @@ describe('Competition Management', () => {
     expect(res.body.submission.isCorrect).toBe(true);
   });
 
-  // 测试获取竞赛排行榜
+  test('should not award points twice for the same competition question', async () => {
+    await request(app)
+      .post('/api/submissions/competition/join')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        competitionId
+      });
+
+    const firstRes = await request(app)
+      .post('/api/submissions/competition/submit')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        competitionId,
+        questionId,
+        answer: 0
+      });
+
+    const secondRes = await request(app)
+      .post('/api/submissions/competition/submit')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        competitionId,
+        questionId,
+        answer: 0
+      });
+
+    const participant = await CompetitionParticipant.findOne({
+      where: {
+        competitionId,
+        userId
+      }
+    });
+
+    expect(firstRes.statusCode).toBe(200);
+    expect(firstRes.body.points).toBe(10);
+    expect(secondRes.statusCode).toBe(200);
+    expect(secondRes.body.alreadySubmitted).toBe(true);
+    expect(secondRes.body.points).toBe(0);
+    expect(secondRes.body.competitionScore).toBe(10);
+    expect(participant.score).toBe(10);
+  });
+
   test('should get competition ranking', async () => {
-    // 先参加竞赛并提交答案
     await request(app)
       .post('/api/submissions/competition/join')
       .set('Authorization', `Bearer ${userToken}`)
@@ -185,7 +228,6 @@ describe('Competition Management', () => {
         answer: 0
       });
 
-    // 获取竞赛排行榜
     const res = await request(app)
       .get(`/api/submissions/competition/${competitionId}/ranking`);
 
