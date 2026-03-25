@@ -40,6 +40,9 @@
       <el-col :span="1.5">
         <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['quiz:question:remove']">删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="info" plain icon="el-icon-upload2" size="mini" @click="handleImport" v-hasPermi="['quiz:question:import']">批量导入</el-button>
+      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
     </el-row>
 
@@ -135,11 +138,39 @@
         <el-button @click="cancel">取 消</el-button>
       </div>
     </el-dialog>
+
+    <el-dialog :title="upload.title" :visible.sync="upload.open" width="420px" append-to-body>
+      <el-upload
+        ref="upload"
+        :limit="1"
+        accept=".xlsx, .xls"
+        :headers="upload.headers"
+        :action="upload.url"
+        :disabled="upload.isUploading"
+        :on-progress="handleFileUploadProgress"
+        :on-success="handleFileSuccess"
+        :auto-upload="false"
+        drag
+      >
+        <i class="el-icon-upload"></i>
+        <div class="el-upload__text">将 Excel 文件拖到此处，或<em>点击上传</em></div>
+        <div class="el-upload__tip text-center" slot="tip">
+          <div class="el-upload__tip">仅允许导入 xls、xlsx 格式文件。</div>
+          <div class="el-upload__tip">模板列包含标题、题干、选项A-F、正确答案、难度、分类、分值。</div>
+          <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板</el-link>
+        </div>
+      </el-upload>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitFileForm">确 定</el-button>
+        <el-button @click="upload.open = false">取 消</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { listQuestion, getQuestion, addQuestion, updateQuestion, delQuestion } from '@/api/quiz/question'
+import { getToken } from '@/utils/auth'
 
 const difficultyOptions = [
   { label: '简单', value: 'easy' },
@@ -161,6 +192,13 @@ export default {
       title: '',
       questionList: [],
       difficultyOptions,
+      upload: {
+        open: false,
+        title: '',
+        isUploading: false,
+        headers: { Authorization: 'Bearer ' + getToken() },
+        url: process.env.VUE_APP_BASE_API + '/quiz/question/importData'
+      },
       queryParams: {
         pageNum: 1,
         pageSize: 10,
@@ -281,6 +319,33 @@ export default {
       this.reset()
       this.open = true
       this.title = '新增题目'
+    },
+    handleImport() {
+      this.upload.title = '赛题批量导入'
+      this.upload.open = true
+    },
+    importTemplate() {
+      this.download('quiz/question/importTemplate', {}, `quiz_question_template_${new Date().getTime()}.xlsx`)
+    },
+    handleFileUploadProgress() {
+      this.upload.isUploading = true
+    },
+    handleFileSuccess(response) {
+      this.upload.open = false
+      this.upload.isUploading = false
+      this.$refs.upload.clearFiles()
+      this.$alert("<div style='overflow:auto;overflow-x:hidden;max-height:70vh;padding:10px 20px 0;'>" + response.msg + '</div>', '导入结果', {
+        dangerouslyUseHTMLString: true
+      })
+      this.getList()
+    },
+    submitFileForm() {
+      const file = this.$refs.upload.uploadFiles
+      if (!file || file.length === 0 || !file[0].name.toLowerCase().endsWith('.xls') && !file[0].name.toLowerCase().endsWith('.xlsx')) {
+        this.$modal.msgError('请选择后缀为 “xls”或“xlsx”的文件。')
+        return
+      }
+      this.$refs.upload.submit()
     },
     handleUpdate(row) {
       this.reset()

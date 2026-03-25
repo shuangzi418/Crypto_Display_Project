@@ -10,18 +10,7 @@
     </template>
     <div class="right-menu">
       <template v-if="device!=='mobile'">
-        <search id="header-search" class="right-menu-item" />
-
         <screenfull id="screenfull" class="right-menu-item hover-effect" />
-
-        <el-tooltip content="布局大小" effect="dark" placement="bottom">
-          <size-select id="size-select" class="right-menu-item hover-effect" />
-        </el-tooltip>
-
-        <el-tooltip content="消息通知" effect="dark" placement="bottom">
-          <header-notice id="header-notice" class="right-menu-item hover-effect" />
-        </el-tooltip>
-
       </template>
 
       <el-dropdown class="avatar-container right-menu-item hover-effect" trigger="hover">
@@ -33,12 +22,6 @@
           <router-link to="/user/profile">
             <el-dropdown-item>个人中心</el-dropdown-item>
           </router-link>
-          <el-dropdown-item @click.native="setLayout" v-if="setting">
-            <span>布局设置</span>
-          </el-dropdown-item>
-          <el-dropdown-item @click.native="lockScreen">
-            <span>锁定屏幕</span>
-          </el-dropdown-item>
           <el-dropdown-item divided @click.native="logout">
             <span>退出登录</span>
           </el-dropdown-item>
@@ -56,9 +39,6 @@ import TopBar from './TopBar'
 import Logo from './Sidebar/Logo'
 import Hamburger from '@/components/Hamburger'
 import Screenfull from '@/components/Screenfull'
-import SizeSelect from '@/components/SizeSelect'
-import Search from '@/components/HeaderSearch'
-import HeaderNotice from './HeaderNotice'
 
 export default {
   components: {
@@ -67,10 +47,7 @@ export default {
     TopNav,
     TopBar,
     Hamburger,
-    Screenfull,
-    SizeSelect,
-    Search,
-    HeaderNotice
+    Screenfull
   },
   computed: {
     ...mapGetters([
@@ -79,11 +56,6 @@ export default {
       'device',
       'nickName'
     ]),
-    setting: {
-      get() {
-        return this.$store.state.settings.showSettings
-      }
-    },
     navType: {
       get() {
         return this.$store.state.settings.navType
@@ -98,15 +70,6 @@ export default {
   methods: {
     toggleSideBar() {
       this.$store.dispatch('app/toggleSideBar')
-    },
-    setLayout(event) {
-      this.$emit('setLayout')
-    },
-    lockScreen() {
-      const currentPath = this.$route.fullPath
-      this.$store.dispatch('lock/lockScreen', currentPath).then(() => {
-        this.$router.push('/lock')
-      })
     },
     logout() {
       this.$confirm('确定注销并退出系统吗？', '提示', {

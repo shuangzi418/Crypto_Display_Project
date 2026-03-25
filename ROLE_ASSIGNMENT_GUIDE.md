@@ -3,8 +3,8 @@
 ## 当前已落地角色
 
 - `platform_super_admin`: 竞赛业务全量权限
-- `question_admin`: 题目管理
-- `competition_admin`: 竞赛管理
+- `question_admin`: 题目管理 + Excel 批量导入
+- `competition_admin`: 竞赛管理 + 排行榜查看
 - `audit_admin`: 昵称/头像审核
 
 对应 SQL 文件：
@@ -57,3 +57,10 @@ npm run ruoyi:stack
 - `ruoyi:admin` 会检查 `8080`，`ruoyi:ui` 会检查 `8081`，`ruoyi:stack` 会在启动前统一检查端口占用
 - `ruoyi:admin` 与 `ruoyi:stack` 会先检查 `backend/.env` 中配置的 MySQL 地址是否可达
 - `ruoyi:admin` 与 `ruoyi:stack` 会自动检查 `127.0.0.1:6379`；若本地 Redis 不可用且 Docker 可用，会自动拉起 `cryptoquiz-redis`
+
+## 本轮后台裁剪与新增能力
+
+- 已移除默认无关菜单：系统监控、系统工具、通知公告、部门、岗位、字典、参数、日志等
+- 已清理默认 `sys_notice` 公告与 `ruoyi.vip` 官网导航
+- 题目管理已支持 Excel 批量导入与模板下载
+- 排行榜页已支持总榜与竞赛榜查询

@@ -2,6 +2,7 @@ package com.ruoyi.system.service;
 
 import java.util.List;
 import com.ruoyi.system.domain.QuizQuestion;
+import com.ruoyi.system.domain.QuizQuestionImportRow;
 
 public interface IQuizQuestionService
 {
@@ -16,4 +17,6 @@ public interface IQuizQuestionService
     int deleteQuestionByIds(Long[] ids);
 
     List<QuizQuestion> selectQuestionOptionList();
+
+    String importQuestion(List<QuizQuestionImportRow> importRows, String operName);
 }

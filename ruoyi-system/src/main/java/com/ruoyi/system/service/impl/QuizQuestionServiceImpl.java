@@ -2,12 +2,17 @@ package com.ruoyi.system.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.QuizQuestion;
+import com.ruoyi.system.domain.QuizQuestionImportRow;
 import com.ruoyi.system.mapper.QuizQuestionMapper;
 import com.ruoyi.system.service.IQuizQuestionService;
 
@@ -15,6 +20,8 @@ import com.ruoyi.system.service.IQuizQuestionService;
 public class QuizQuestionServiceImpl implements IQuizQuestionService
 {
     private static final String[] VALID_DIFFICULTIES = { "easy", "medium", "hard" };
+
+    private static final Logger log = LoggerFactory.getLogger(QuizQuestionServiceImpl.class);
 
     @Autowired
     private QuizQuestionMapper questionMapper;
@@ -58,6 +65,57 @@ public class QuizQuestionServiceImpl implements IQuizQuestionService
     public List<QuizQuestion> selectQuestionOptionList()
     {
         return questionMapper.selectQuestionOptionList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public String importQuestion(List<QuizQuestionImportRow> importRows, String operName)
+    {
+        if (importRows == null || importRows.isEmpty())
+        {
+            throw new ServiceException("导入题目数据不能为空");
+        }
+
+        int successNum = 0;
+        int failureNum = 0;
+        StringBuilder successMsg = new StringBuilder();
+        StringBuilder failureMsg = new StringBuilder();
+
+        for (int index = 0; index < importRows.size(); index++)
+        {
+            QuizQuestionImportRow row = importRows.get(index);
+            int excelRowNum = index + 2;
+            try
+            {
+                QuizQuestion question = buildQuestionFromImportRow(row, excelRowNum);
+                question.setCreateBy(operName);
+                questionMapper.insertQuestion(question);
+                successNum++;
+                successMsg.append("<br/>").append(successNum).append("、第 ").append(excelRowNum)
+                        .append(" 行导入成功：").append(question.getTitle());
+            }
+            catch (Exception ex)
+            {
+                failureNum++;
+                String message = "<br/>" + failureNum + "、第 " + excelRowNum + " 行导入失败：" + ex.getMessage();
+                failureMsg.append(message);
+                log.warn("导入题目失败，行号 {}", excelRowNum, ex);
+            }
+        }
+
+        StringBuilder result = new StringBuilder();
+        result.append("本次共处理 ").append(importRows.size()).append(" 条数据");
+        result.append("<br/>成功：").append(successNum).append(" 条");
+        result.append("<br/>失败：").append(failureNum).append(" 条");
+        if (successNum > 0)
+        {
+            result.append("<br/><br/><strong>成功明细</strong>").append(successMsg);
+        }
+        if (failureNum > 0)
+        {
+            result.append("<br/><br/><strong>失败明细</strong>").append(failureMsg);
+        }
+        return result.toString();
     }
 
     private void normalizeQuestion(QuizQuestion question)
@@ -125,5 +183,118 @@ public class QuizQuestionServiceImpl implements IQuizQuestionService
             }
         }
         return false;
+    }
+
+    private QuizQuestion buildQuestionFromImportRow(QuizQuestionImportRow row, int excelRowNum)
+    {
+        QuizQuestion question = new QuizQuestion();
+        question.setTitle(StringUtils.trim(row.getTitle()));
+        question.setContent(StringUtils.trim(row.getContent()));
+        question.setCategory(StringUtils.trim(row.getCategory()));
+        question.setDifficulty(normalizeDifficulty(row.getDifficulty()));
+        question.setPoints(parsePoints(row.getPoints(), excelRowNum));
+        question.setOptions(buildOptions(row));
+        question.setCorrectAnswer(parseCorrectAnswer(row.getCorrectAnswer(), question.getOptions(), excelRowNum));
+        normalizeQuestion(question);
+        return question;
+    }
+
+    private List<String> buildOptions(QuizQuestionImportRow row)
+    {
+        List<String> options = new ArrayList<>();
+        addOption(options, row.getOptionA());
+        addOption(options, row.getOptionB());
+        addOption(options, row.getOptionC());
+        addOption(options, row.getOptionD());
+        addOption(options, row.getOptionE());
+        addOption(options, row.getOptionF());
+        return options;
+    }
+
+    private void addOption(List<String> options, String value)
+    {
+        String normalized = StringUtils.trim(value);
+        if (StringUtils.isNotBlank(normalized))
+        {
+            options.add(normalized);
+        }
+    }
+
+    private Integer parseCorrectAnswer(String answer, List<String> options, int excelRowNum)
+    {
+        String normalizedAnswer = StringUtils.trim(answer);
+        if (StringUtils.isBlank(normalizedAnswer))
+        {
+            throw new ServiceException("第 " + excelRowNum + " 行正确答案不能为空");
+        }
+
+        String upperValue = normalizedAnswer.toUpperCase();
+        if (upperValue.length() == 1 && upperValue.charAt(0) >= 'A' && upperValue.charAt(0) <= 'Z')
+        {
+            return upperValue.charAt(0) - 'A';
+        }
+
+        if (NumberUtils.isCreatable(upperValue))
+        {
+            int numericValue = NumberUtils.toInt(upperValue, -1);
+            if (numericValue >= 0 && numericValue < options.size())
+            {
+                return numericValue;
+            }
+            if (numericValue > 0 && numericValue <= options.size())
+            {
+                return numericValue - 1;
+            }
+        }
+
+        for (int index = 0; index < options.size(); index++)
+        {
+            if (StringUtils.equals(options.get(index), normalizedAnswer))
+            {
+                return index;
+            }
+        }
+        throw new ServiceException("第 " + excelRowNum + " 行正确答案无法识别");
+    }
+
+    private String normalizeDifficulty(String difficulty)
+    {
+        String normalized = StringUtils.trim(difficulty);
+        if (StringUtils.isBlank(normalized))
+        {
+            return normalized;
+        }
+        if (StringUtils.equalsAnyIgnoreCase(normalized, "easy", "简单"))
+        {
+            return "easy";
+        }
+        if (StringUtils.equalsAnyIgnoreCase(normalized, "medium", "中等"))
+        {
+            return "medium";
+        }
+        if (StringUtils.equalsAnyIgnoreCase(normalized, "hard", "困难"))
+        {
+            return "hard";
+        }
+        return normalized.toLowerCase();
+    }
+
+    private Integer parsePoints(String points, int excelRowNum)
+    {
+        String normalized = StringUtils.trim(points);
+        if (StringUtils.isBlank(normalized))
+        {
+            throw new ServiceException("第 " + excelRowNum + " 行分值不能为空");
+        }
+        if (!NumberUtils.isCreatable(normalized))
+        {
+            throw new ServiceException("第 " + excelRowNum + " 行分值必须是数字");
+        }
+        BigDecimal value = NumberUtils.createBigDecimal(normalized);
+        if (value.stripTrailingZeros().scale() > 0)
+        {
+            throw new ServiceException("第 " + excelRowNum + " 行分值必须是整数");
+        }
+        return value.intValue();
     }
 }

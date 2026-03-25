@@ -15,10 +15,12 @@ insert into sys_role_menu values ('200', '2002');
 insert into sys_role_menu values ('200', '2003');
 insert into sys_role_menu values ('200', '2004');
 insert into sys_role_menu values ('200', '2005');
+insert into sys_role_menu values ('200', '2006');
 insert into sys_role_menu values ('200', '2100');
 insert into sys_role_menu values ('200', '2101');
 insert into sys_role_menu values ('200', '2102');
 insert into sys_role_menu values ('200', '2103');
+insert into sys_role_menu values ('200', '2111');
 insert into sys_role_menu values ('200', '2104');
 insert into sys_role_menu values ('200', '2105');
 insert into sys_role_menu values ('200', '2106');
@@ -26,6 +28,7 @@ insert into sys_role_menu values ('200', '2107');
 insert into sys_role_menu values ('200', '2108');
 insert into sys_role_menu values ('200', '2109');
 insert into sys_role_menu values ('200', '2110');
+insert into sys_role_menu values ('200', '2112');
 
 -- 题库管理员：题库相关
 insert into sys_role_menu values ('201', '2000');
@@ -34,14 +37,17 @@ insert into sys_role_menu values ('201', '2100');
 insert into sys_role_menu values ('201', '2101');
 insert into sys_role_menu values ('201', '2102');
 insert into sys_role_menu values ('201', '2103');
+insert into sys_role_menu values ('201', '2111');
 
 -- 竞赛管理员：竞赛相关
 insert into sys_role_menu values ('202', '2000');
 insert into sys_role_menu values ('202', '2002');
+insert into sys_role_menu values ('202', '2006');
 insert into sys_role_menu values ('202', '2104');
 insert into sys_role_menu values ('202', '2105');
 insert into sys_role_menu values ('202', '2106');
 insert into sys_role_menu values ('202', '2107');
+insert into sys_role_menu values ('202', '2112');
 
 -- 审核管理员：业务用户查看 + 昵称头像审核
 insert into sys_role_menu values ('203', '2000');

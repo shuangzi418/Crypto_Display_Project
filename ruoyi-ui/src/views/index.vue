@@ -6,11 +6,12 @@
           <div class="hero-eyebrow">Admin Dashboard</div>
           <h2>{{ title }}</h2>
           <p>
-            面向密码知识竞赛项目的后台运营中心，统一承接题库维护、竞赛编排、业务用户管理与昵称/头像审核。
+            面向密码知识竞赛项目的后台运营中心，统一承接题库维护、赛题导入、竞赛编排、排行榜展示以及业务用户审核。
           </p>
           <div class="hero-actions">
             <el-button type="primary" icon="el-icon-notebook-2" @click="go('/quiz/question')">进入题目管理</el-button>
             <el-button plain icon="el-icon-date" @click="go('/quiz/competition')">进入竞赛管理</el-button>
+            <el-button plain icon="el-icon-s-data" @click="go('/quiz/leaderboard')">查看排行榜</el-button>
           </div>
         </el-card>
       </el-col>
@@ -84,25 +85,27 @@ export default {
     return {
       title: process.env.VUE_APP_TITLE,
       summaryItems: [
-        { label: '业务模块', value: '5', desc: '题目、竞赛、用户、昵称审核、头像审核' },
+        { label: '业务模块', value: '6', desc: '题目、竞赛、排行榜、用户、昵称审核、头像审核' },
         { label: '双栈现状', value: '进行中', desc: 'RuoYi 管理端逐步替换旧 React Admin' },
         { label: '数据库', value: 'crypto_quiz', desc: '系统表与业务表共用同一 MySQL 实例' }
       ],
       moduleCards: [
         { title: '题目管理', desc: '维护题库内容、难度、分类和正确答案。', path: '/quiz/question', icon: 'question' },
         { title: '竞赛管理', desc: '创建竞赛、关联题目、同步赛事状态。', path: '/quiz/competition', icon: 'date' },
-        { title: '业务用户', desc: '查看参赛用户并管理旧系统业务角色。', path: '/quiz/user', icon: 'peoples' }
+        { title: '业务用户', desc: '查看参赛用户并管理旧系统业务角色。', path: '/quiz/user', icon: 'peoples' },
+        { title: '排行榜', desc: '查看累计积分榜与竞赛分榜表现。', path: '/quiz/leaderboard', icon: 'chart' }
       ],
       workflowItems: [
         { stage: 'Step 1', title: '题库录入与维护', desc: '先沉淀可复用题目，再按分类与难度做精细化运营。', type: 'primary' },
         { stage: 'Step 2', title: '竞赛创建与编排', desc: '基于题库组合竞赛，设定时间窗口与题目集。', type: 'success' },
-        { stage: 'Step 3', title: '用户资料审核', desc: '审核排行榜昵称与头像，保证公开展示内容合规。', type: 'warning' }
+        { stage: 'Step 3', title: '排行榜复核与审核', desc: '结合昵称、头像审核结果，确保展示信息与排名数据一致。', type: 'warning' }
       ],
       quickLinks: [
+        { title: '排行榜总览', desc: '查看积分总榜与竞赛分榜', path: '/quiz/leaderboard' },
         { title: '昵称审核', desc: '处理待审核昵称申请', path: '/quiz/nickname-audit' },
         { title: '头像审核', desc: '处理待审核头像申请', path: '/quiz/avatar-audit' },
-        { title: '业务用户管理', desc: '调整旧系统业务角色', path: '/quiz/user' },
-        { title: '竞赛列表', desc: '检查竞赛状态与题目配置', path: '/quiz/competition' }
+        { title: '赛题批量导入', desc: '用 Excel 快速导入题库', path: '/quiz/question' },
+        { title: '业务用户管理', desc: '调整旧系统业务角色', path: '/quiz/user' }
       ]
     }
   },
