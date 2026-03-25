@@ -17,6 +17,7 @@
 | `users.nicknameStatus` | `quiz/user/nickname/*` | 昵称待审列表、通过/拒绝 |
 | `users.avatarStatus` | `quiz/user/avatar/*` | 头像待审列表、通过/拒绝 |
 | `users` + `competition_participants` | `quiz/leaderboard/*` | 总排行榜、竞赛排行榜 |
+| 核心业务表聚合视图 | `quiz/data/overview` | 项目专用数据管理总览、业务表统计、数据快照 |
 | `messages` | `QuizBusinessUserMapper.insertReviewMessage` | 审核完成后给业务用户发站内消息 |
 
 ## 现有 Node API -> RuoYi API 对照
@@ -69,11 +70,13 @@
   - `ruoyi-ui/src/views/quiz/audit/nickname.vue`
   - `ruoyi-ui/src/views/quiz/audit/avatar.vue`
   - `ruoyi-ui/src/views/quiz/leaderboard/index.vue`
+  - `ruoyi-ui/src/views/quiz/data/index.vue`
 - API：
   - `ruoyi-ui/src/api/quiz/question.js`
   - `ruoyi-ui/src/api/quiz/competition.js`
   - `ruoyi-ui/src/api/quiz/user.js`
   - `ruoyi-ui/src/api/quiz/leaderboard.js`
+  - `ruoyi-ui/src/api/quiz/data.js`
 - 菜单 SQL：
   - `sql/crypto_quiz_menu.sql`
 - 品牌清理 SQL：
@@ -97,6 +100,7 @@
   - `quiz:question:*`
   - `quiz:competition:*`
   - `quiz:leaderboard:list`
+  - `quiz:data:view`
   - `quiz:user:list`
   - `quiz:user:edit`
   - `quiz:user:audit`

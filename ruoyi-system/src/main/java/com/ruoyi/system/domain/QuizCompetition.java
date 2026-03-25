@@ -42,6 +42,8 @@ public class QuizCompetition extends BaseEntity
 
     private Integer questionCount;
 
+    private Integer participantCount;
+
     private String questionTitles;
 
     private List<Long> questionIds = new ArrayList<>();
@@ -126,6 +128,16 @@ public class QuizCompetition extends BaseEntity
     public void setQuestionCount(Integer questionCount)
     {
         this.questionCount = questionCount;
+    }
+
+    public Integer getParticipantCount()
+    {
+        return participantCount;
+    }
+
+    public void setParticipantCount(Integer participantCount)
+    {
+        this.participantCount = participantCount;
     }
 
     public String getQuestionTitles()

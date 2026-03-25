@@ -4,7 +4,7 @@
 
 - `platform_super_admin`: 竞赛业务全量权限
 - `question_admin`: 题目管理 + Excel 批量导入
-- `competition_admin`: 竞赛管理 + 排行榜查看
+- `competition_admin`: 竞赛管理 + 排行榜查看 + 数据管理总览
 - `audit_admin`: 昵称/头像审核
 
 对应 SQL 文件：
@@ -65,3 +65,4 @@ npm run ruoyi:stack
 - 已清理默认 `sys_notice` 公告与 `ruoyi.vip` 官网导航
 - 题目管理已支持 Excel 批量导入与模板下载
 - 排行榜页已支持总榜与竞赛榜查询
+- 已新增项目专用 `数据管理` 页面，用于查看核心业务表统计、待审核队列与积分榜快照

@@ -1,7 +1,7 @@
 -- 密码知识竞赛管理平台菜单
 
-delete from sys_role_menu where menu_id in (2000,2001,2002,2003,2004,2005,2006,2100,2101,2102,2103,2104,2105,2106,2107,2108,2109,2110,2111,2112);
-delete from sys_menu where menu_id in (2000,2001,2002,2003,2004,2005,2006,2100,2101,2102,2103,2104,2105,2106,2107,2108,2109,2110,2111,2112);
+delete from sys_role_menu where menu_id in (2000,2001,2002,2003,2004,2005,2006,2007,2100,2101,2102,2103,2104,2105,2106,2107,2108,2109,2110,2111,2112);
+delete from sys_menu where menu_id in (2000,2001,2002,2003,2004,2005,2006,2007,2100,2101,2102,2103,2104,2105,2106,2107,2108,2109,2110,2111,2112);
 
 insert into sys_menu values('2000', '竞赛运营', '0', '4', 'quiz', '', '', 'Quiz', 1, 0, 'M', '0', '0', '', 'education', 'admin', sysdate(), '', null, '密码知识竞赛业务目录');
 insert into sys_menu values('2001', '题目管理', '2000', '1', 'question', 'quiz/question/index', '', 'QuizQuestion', 1, 0, 'C', '0', '0', 'quiz:question:list', 'question', 'admin', sysdate(), '', null, '题目管理菜单');
@@ -10,6 +10,7 @@ insert into sys_menu values('2003', '业务用户', '2000', '3', 'user', 'quiz/u
 insert into sys_menu values('2004', '昵称审核', '2000', '4', 'nickname-audit', 'quiz/audit/nickname', '', 'QuizNicknameAudit', 1, 0, 'C', '0', '0', 'quiz:user:audit', 'message', 'admin', sysdate(), '', null, '昵称审核菜单');
 insert into sys_menu values('2005', '头像审核', '2000', '5', 'avatar-audit', 'quiz/audit/avatar', '', 'QuizAvatarAudit', 1, 0, 'C', '0', '0', 'quiz:user:audit', 'user', 'admin', sysdate(), '', null, '头像审核菜单');
 insert into sys_menu values('2006', '排行榜展示', '2000', '6', 'leaderboard', 'quiz/leaderboard/index', '', 'QuizLeaderboard', 1, 0, 'C', '0', '0', 'quiz:leaderboard:list', 'chart', 'admin', sysdate(), '', null, '排行榜展示菜单');
+insert into sys_menu values('2007', '数据管理', '2000', '7', 'data', 'quiz/data/index', '', 'QuizDataCenter', 1, 0, 'C', '0', '0', 'quiz:data:view', 'table', 'admin', sysdate(), '', null, '项目专用数据管理菜单');
 
 insert into sys_menu values('2100', '题目查询', '2001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'quiz:question:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2101', '题目新增', '2001', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'quiz:question:add', '#', 'admin', sysdate(), '', null, '');
@@ -32,6 +33,7 @@ insert into sys_role_menu values ('1', '2003');
 insert into sys_role_menu values ('1', '2004');
 insert into sys_role_menu values ('1', '2005');
 insert into sys_role_menu values ('1', '2006');
+insert into sys_role_menu values ('1', '2007');
 insert into sys_role_menu values ('1', '2100');
 insert into sys_role_menu values ('1', '2101');
 insert into sys_role_menu values ('1', '2102');

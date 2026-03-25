@@ -12,6 +12,7 @@
             <el-button type="primary" icon="el-icon-notebook-2" @click="go('/quiz/question')">进入题目管理</el-button>
             <el-button plain icon="el-icon-date" @click="go('/quiz/competition')">进入竞赛管理</el-button>
             <el-button plain icon="el-icon-s-data" @click="go('/quiz/leaderboard')">查看排行榜</el-button>
+            <el-button plain icon="el-icon-tickets" @click="go('/quiz/data')">数据管理</el-button>
           </div>
         </el-card>
       </el-col>
@@ -93,7 +94,8 @@ export default {
         { title: '题目管理', desc: '维护题库内容、难度、分类和正确答案。', path: '/quiz/question', icon: 'question' },
         { title: '竞赛管理', desc: '创建竞赛、关联题目、同步赛事状态。', path: '/quiz/competition', icon: 'date' },
         { title: '业务用户', desc: '查看参赛用户并管理旧系统业务角色。', path: '/quiz/user', icon: 'peoples' },
-        { title: '排行榜', desc: '查看累计积分榜与竞赛分榜表现。', path: '/quiz/leaderboard', icon: 'chart' }
+        { title: '排行榜', desc: '查看累计积分榜与竞赛分榜表现。', path: '/quiz/leaderboard', icon: 'chart' },
+        { title: '数据管理', desc: '查看核心业务表统计、待审核队列与积分榜快照。', path: '/quiz/data', icon: 'table' }
       ],
       workflowItems: [
         { stage: 'Step 1', title: '题库录入与维护', desc: '先沉淀可复用题目，再按分类与难度做精细化运营。', type: 'primary' },
@@ -102,6 +104,7 @@ export default {
       ],
       quickLinks: [
         { title: '排行榜总览', desc: '查看积分总榜与竞赛分榜', path: '/quiz/leaderboard' },
+        { title: '数据管理', desc: '查看业务表统计与关键数据快照', path: '/quiz/data' },
         { title: '昵称审核', desc: '处理待审核昵称申请', path: '/quiz/nickname-audit' },
         { title: '头像审核', desc: '处理待审核头像申请', path: '/quiz/avatar-audit' },
         { title: '赛题批量导入', desc: '用 Excel 快速导入题库', path: '/quiz/question' },

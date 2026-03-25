@@ -37,6 +37,10 @@ public class QuizBusinessUser extends BaseEntity
 
     private String keyword;
 
+    private String reviewType;
+
+    private String reviewStatus;
+
     public Long getId()
     {
         return id;
@@ -135,5 +139,25 @@ public class QuizBusinessUser extends BaseEntity
     public void setKeyword(String keyword)
     {
         this.keyword = keyword;
+    }
+
+    public String getReviewType()
+    {
+        return reviewType;
+    }
+
+    public void setReviewType(String reviewType)
+    {
+        this.reviewType = reviewType;
+    }
+
+    public String getReviewStatus()
+    {
+        return reviewStatus;
+    }
+
+    public void setReviewStatus(String reviewStatus)
+    {
+        this.reviewStatus = reviewStatus;
     }
 }
