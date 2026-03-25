@@ -47,12 +47,6 @@
               <el-col :span="1.5">
                 <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['system:user:remove']">删除</el-button>
               </el-col>
-              <el-col :span="1.5">
-                <el-button type="info" plain icon="el-icon-upload2" size="mini" @click="handleImport" v-hasPermi="['system:user:import']">导入</el-button>
-              </el-col>
-              <el-col :span="1.5">
-                <el-button type="warning" plain icon="el-icon-download" size="mini" @click="handleExport" v-hasPermi="['system:user:export']">导出</el-button>
-              </el-col>
               <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
             </el-row>
 
@@ -77,13 +71,7 @@
                 <template slot-scope="scope" v-if="scope.row.userId !== 1">
                   <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)" v-hasPermi="['system:user:edit']">修改</el-button>
                   <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)" v-hasPermi="['system:user:remove']">删除</el-button>
-                  <el-dropdown size="mini" @command="(command) => handleCommand(command, scope.row)" v-hasPermi="['system:user:resetPwd', 'system:user:edit']">
-                    <el-button size="mini" type="text" icon="el-icon-d-arrow-right">更多</el-button>
-                    <el-dropdown-menu slot="dropdown">
-                      <el-dropdown-item command="handleResetPwd" icon="el-icon-key" v-hasPermi="['system:user:resetPwd']">重置密码</el-dropdown-item>
-                      <el-dropdown-item command="handleAuthRole" icon="el-icon-circle-check" v-hasPermi="['system:user:edit']">分配角色</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </el-dropdown>
+                  <el-button size="mini" type="text" icon="el-icon-circle-check" @click="handleAuthRole(scope.row)" v-hasPermi="['system:user:edit']">分配角色</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -178,31 +166,11 @@
         <el-button @click="cancel">取 消</el-button>
       </div>
     </el-dialog>
-
-    <!-- 用户导入对话框 -->
-    <el-dialog :title="upload.title" :visible.sync="upload.open" width="400px" append-to-body>
-      <el-upload ref="upload" :limit="1" accept=".xlsx, .xls" :headers="upload.headers" :action="upload.url + '?updateSupport=' + upload.updateSupport" :disabled="upload.isUploading" :on-progress="handleFileUploadProgress" :on-success="handleFileSuccess" :auto-upload="false" drag>
-        <i class="el-icon-upload"></i>
-        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-        <div class="el-upload__tip text-center" slot="tip">
-          <div class="el-upload__tip" slot="tip">
-            <el-checkbox v-model="upload.updateSupport" />是否更新已经存在的用户数据
-          </div>
-          <span>仅允许导入xls、xlsx格式文件。</span>
-          <el-link type="primary" :underline="false" style="font-size: 12px; vertical-align: baseline" @click="importTemplate">下载模板</el-link>
-        </div>
-      </el-upload>
-      <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitFileForm">确 定</el-button>
-        <el-button @click="upload.open = false">取 消</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/system/user"
-import { getToken } from "@/utils/auth"
+import { listUser, getUser, delUser, addUser, updateUser, changeUserStatus, deptTreeSelect } from "@/api/system/user"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 import { Splitpanes, Pane } from "splitpanes"
@@ -251,21 +219,6 @@ export default {
       defaultProps: {
         children: "children",
         label: "label"
-      },
-      // 用户导入参数
-      upload: {
-        // 是否显示弹出层（用户导入）
-        open: false,
-        // 弹出层标题（用户导入）
-        title: "",
-        // 是否禁用上传
-        isUploading: false,
-        // 是否更新已经存在的用户数据
-        updateSupport: 0,
-        // 设置上传的请求头部
-        headers: { Authorization: "Bearer " + getToken() },
-        // 上传的地址
-        url: process.env.VUE_APP_BASE_API + "/system/user/importData"
       },
       // 查询参数
       queryParams: {
@@ -423,19 +376,6 @@ export default {
       this.single = selection.length != 1
       this.multiple = !selection.length
     },
-    // 更多操作触发
-    handleCommand(command, row) {
-      switch (command) {
-        case "handleResetPwd":
-          this.handleResetPwd(row)
-          break
-        case "handleAuthRole":
-          this.handleAuthRole(row)
-          break
-        default:
-          break
-      }
-    },
     /** 新增按钮操作 */
     handleAdd() {
       this.reset()
@@ -461,25 +401,6 @@ export default {
         this.title = "修改用户"
         this.form.password = ""
       })
-    },
-    /** 重置密码按钮操作 */
-    handleResetPwd(row) {
-      this.$prompt('请输入"' + row.userName + '"的新密码', "提示", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        closeOnClickModal: false,
-        inputPattern: /^.{5,20}$/,
-        inputErrorMessage: "用户密码长度必须介于 5 和 20 之间",
-        inputValidator: (value) => {
-          if (/<|>|"|'|\||\\/.test(value)) {
-            return "不能包含非法字符：< > \" ' \\\ |"
-          }
-        },
-      }).then(({ value }) => {
-          resetUserPwd(row.userId, value).then(() => {
-            this.$modal.msgSuccess("修改成功，新密码是：" + value)
-          })
-        }).catch(() => {})
     },
     /** 分配角色操作 */
     handleAuthRole: function(row) {
@@ -515,44 +436,7 @@ export default {
         this.getList()
         this.$modal.msgSuccess("删除成功")
       }).catch(() => {})
-    },
-    /** 导出按钮操作 */
-    handleExport() {
-      this.download('system/user/export', {
-        ...this.queryParams
-      }, `user_${new Date().getTime()}.xlsx`)
-    },
-    /** 导入按钮操作 */
-    handleImport() {
-      this.upload.title = "用户导入"
-      this.upload.open = true
-    },
-    /** 下载模板操作 */
-    importTemplate() {
-      this.download('system/user/importTemplate', {
-      }, `user_template_${new Date().getTime()}.xlsx`)
-    },
-    // 文件上传中处理
-    handleFileUploadProgress(event, file, fileList) {
-      this.upload.isUploading = true
-    },
-    // 文件上传成功处理
-    handleFileSuccess(response, file, fileList) {
-      this.upload.open = false
-      this.upload.isUploading = false
-      this.$refs.upload.clearFiles()
-      this.$alert("<div style='overflow: auto;overflow-x: hidden;max-height: 70vh;padding: 10px 20px 0;'>" + response.msg + "</div>", "导入结果", { dangerouslyUseHTMLString: true })
-      this.getList()
-    },
-    // 提交上传文件
-    submitFileForm() {
-      const file = this.$refs.upload.uploadFiles
-      if (!file || file.length === 0 || !file[0].name.toLowerCase().endsWith('.xls') && !file[0].name.toLowerCase().endsWith('.xlsx')) {
-        this.$modal.msgError("请选择后缀为 “xls”或“xlsx”的文件。")
-        return
-      }
-      this.$refs.upload.submit()
+    }
     }
   }
-}
 </script>
