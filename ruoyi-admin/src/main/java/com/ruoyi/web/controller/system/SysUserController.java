@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.system;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
@@ -24,6 +25,7 @@ import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
@@ -41,6 +43,9 @@ import com.ruoyi.system.service.ISysUserService;
 @RequestMapping("/system/user")
 public class SysUserController extends BaseController
 {
+    private static final Set<String> PROJECT_ROLE_KEYS = Set.of("platform_super_admin", "question_admin",
+            "competition_admin", "audit_admin");
+
     @Autowired
     private ISysUserService userService;
 
@@ -108,10 +113,10 @@ public class SysUserController extends BaseController
             SysUser sysUser = userService.selectUserById(userId);
             ajax.put(AjaxResult.DATA_TAG, sysUser);
             ajax.put("postIds", postService.selectPostListByUserId(userId));
-            ajax.put("roleIds", sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
+            ajax.put("roleIds", sysUser.getRoles().stream().filter(this::isProjectRole).map(SysRole::getRoleId).collect(Collectors.toList()));
         }
         List<SysRole> roles = roleService.selectRoleAll();
-        ajax.put("roles", SecurityUtils.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
+        ajax.put("roles", filterProjectRoles(roles));
         ajax.put("posts", postService.selectPostAll());
         return ajax;
     }
@@ -125,6 +130,7 @@ public class SysUserController extends BaseController
     public AjaxResult add(@Validated @RequestBody SysUser user)
     {
         deptService.checkDeptDataScope(user.getDeptId());
+        validateProjectRoleIds(user.getRoleIds());
         roleService.checkRoleDataScope(user.getRoleIds());
         if (!userService.checkUserNameUnique(user))
         {
@@ -154,6 +160,7 @@ public class SysUserController extends BaseController
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
         deptService.checkDeptDataScope(user.getDeptId());
+        validateProjectRoleIds(user.getRoleIds());
         roleService.checkRoleDataScope(user.getRoleIds());
         if (!userService.checkUserNameUnique(user))
         {
@@ -226,7 +233,7 @@ public class SysUserController extends BaseController
         SysUser user = userService.selectUserById(userId);
         List<SysRole> roles = roleService.selectRolesByUserId(userId);
         ajax.put("user", user);
-        ajax.put("roles", SecurityUtils.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
+        ajax.put("roles", filterProjectRoles(roles));
         return ajax;
     }
 
@@ -239,6 +246,7 @@ public class SysUserController extends BaseController
     public AjaxResult insertAuthRole(Long userId, Long[] roleIds)
     {
         userService.checkUserDataScope(userId);
+        validateProjectRoleIds(roleIds);
         roleService.checkRoleDataScope(roleIds);
         userService.insertUserAuth(userId, roleIds);
         return success();
@@ -252,5 +260,32 @@ public class SysUserController extends BaseController
     public AjaxResult deptTree(SysDept dept)
     {
         return success(deptService.selectDeptTreeList(dept));
+    }
+
+    private List<SysRole> filterProjectRoles(List<SysRole> roles)
+    {
+        return roles.stream().filter(this::isProjectRole).collect(Collectors.toList());
+    }
+
+    private boolean isProjectRole(SysRole role)
+    {
+        return role != null && PROJECT_ROLE_KEYS.contains(role.getRoleKey());
+    }
+
+    private void validateProjectRoleIds(Long[] roleIds)
+    {
+        if (ArrayUtils.isEmpty(roleIds))
+        {
+            return;
+        }
+
+        for (Long roleId : roleIds)
+        {
+            SysRole role = roleService.selectRoleById(roleId);
+            if (!isProjectRole(role))
+            {
+                throw new ServiceException("仅允许分配竞赛项目角色");
+            }
+        }
     }
 }

@@ -16,7 +16,7 @@ public class QuizDataCenterController extends BaseController
     @Autowired
     private IQuizDataCenterService dataCenterService;
 
-    @PreAuthorize("@ss.hasAnyPermi('quiz:data:view,quiz:question:list,quiz:competition:list,quiz:user:list,quiz:leaderboard:list')")
+    @PreAuthorize("@ss.hasPermi('quiz:data:view')")
     @GetMapping("/overview")
     public AjaxResult overview()
     {

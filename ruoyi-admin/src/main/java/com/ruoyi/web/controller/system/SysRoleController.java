@@ -1,6 +1,8 @@
 package com.ruoyi.web.controller.system;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,17 +19,20 @@ import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysDept;
+import com.ruoyi.common.core.domain.entity.SysMenu;
 import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.framework.web.service.SysPermissionService;
 import com.ruoyi.framework.web.service.TokenService;
 import com.ruoyi.system.domain.SysUserRole;
 import com.ruoyi.system.service.ISysDeptService;
+import com.ruoyi.system.service.ISysMenuService;
 import com.ruoyi.system.service.ISysRoleService;
 import com.ruoyi.system.service.ISysUserService;
 
@@ -40,6 +45,11 @@ import com.ruoyi.system.service.ISysUserService;
 @RequestMapping("/system/role")
 public class SysRoleController extends BaseController
 {
+    private static final Set<String> PROJECT_ROLE_KEYS = Set.of("platform_super_admin", "question_admin",
+            "competition_admin", "audit_admin");
+
+    private static final Set<Long> PROJECT_MENU_ROOT_IDS = Set.of(1L, 2000L);
+
     @Autowired
     private ISysRoleService roleService;
 
@@ -55,13 +65,18 @@ public class SysRoleController extends BaseController
     @Autowired
     private ISysDeptService deptService;
 
+    @Autowired
+    private ISysMenuService menuService;
+
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/list")
     public TableDataInfo list(SysRole role)
     {
-        startPage();
         List<SysRole> list = roleService.selectRoleList(role);
-        return getDataTable(list);
+        List<SysRole> filteredList = filterProjectRoles(list);
+        TableDataInfo rspData = getDataTable(filteredList);
+        rspData.setTotal(filteredList.size());
+        return rspData;
     }
 
     @Log(title = "角色管理", businessType = BusinessType.EXPORT)
@@ -69,7 +84,7 @@ public class SysRoleController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, SysRole role)
     {
-        List<SysRole> list = roleService.selectRoleList(role);
+        List<SysRole> list = filterProjectRoles(roleService.selectRoleList(role));
         ExcelUtil<SysRole> util = new ExcelUtil<SysRole>(SysRole.class);
         util.exportExcel(response, list, "角色数据");
     }
@@ -82,6 +97,7 @@ public class SysRoleController extends BaseController
     public AjaxResult getInfo(@PathVariable Long roleId)
     {
         roleService.checkRoleDataScope(roleId);
+        ensureProjectRole(roleId);
         return success(roleService.selectRoleById(roleId));
     }
 
@@ -93,6 +109,8 @@ public class SysRoleController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysRole role)
     {
+        validateProjectRole(role);
+        validateProjectMenuIds(role.getMenuIds());
         if (!roleService.checkRoleNameUnique(role))
         {
             return error("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
@@ -116,6 +134,8 @@ public class SysRoleController extends BaseController
     {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
+        validateProjectRole(role);
+        validateProjectMenuIds(role.getMenuIds());
         if (!roleService.checkRoleNameUnique(role))
         {
             return error("修改角色'" + role.getRoleName() + "'失败，角色名称已存在");
@@ -151,6 +171,7 @@ public class SysRoleController extends BaseController
     {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
+        ensureProjectRole(role.getRoleId());
         return toAjax(roleService.authDataScope(role));
     }
 
@@ -164,6 +185,7 @@ public class SysRoleController extends BaseController
     {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
+        ensureProjectRole(role.getRoleId());
         role.setUpdateBy(getUsername());
         return toAjax(roleService.updateRoleStatus(role));
     }
@@ -176,6 +198,10 @@ public class SysRoleController extends BaseController
     @DeleteMapping("/{roleIds}")
     public AjaxResult remove(@PathVariable Long[] roleIds)
     {
+        for (Long roleId : roleIds)
+        {
+            ensureProjectRole(roleId);
+        }
         return toAjax(roleService.deleteRoleByIds(roleIds));
     }
 
@@ -186,7 +212,7 @@ public class SysRoleController extends BaseController
     @GetMapping("/optionselect")
     public AjaxResult optionselect()
     {
-        return success(roleService.selectRoleAll());
+        return success(filterProjectRoles(roleService.selectRoleAll()));
     }
 
     /**
@@ -197,6 +223,7 @@ public class SysRoleController extends BaseController
     public TableDataInfo allocatedList(SysUser user)
     {
         startPage();
+        ensureProjectRole(user.getRoleId());
         List<SysUser> list = userService.selectAllocatedList(user);
         return getDataTable(list);
     }
@@ -209,6 +236,7 @@ public class SysRoleController extends BaseController
     public TableDataInfo unallocatedList(SysUser user)
     {
         startPage();
+        ensureProjectRole(user.getRoleId());
         List<SysUser> list = userService.selectUnallocatedList(user);
         return getDataTable(list);
     }
@@ -221,6 +249,7 @@ public class SysRoleController extends BaseController
     @PutMapping("/authUser/cancel")
     public AjaxResult cancelAuthUser(@RequestBody SysUserRole userRole)
     {
+        ensureProjectRole(userRole.getRoleId());
         return toAjax(roleService.deleteAuthUser(userRole));
     }
 
@@ -232,6 +261,7 @@ public class SysRoleController extends BaseController
     @PutMapping("/authUser/cancelAll")
     public AjaxResult cancelAuthUserAll(Long roleId, Long[] userIds)
     {
+        ensureProjectRole(roleId);
         return toAjax(roleService.deleteAuthUsers(roleId, userIds));
     }
 
@@ -244,6 +274,7 @@ public class SysRoleController extends BaseController
     public AjaxResult selectAuthUserAll(Long roleId, Long[] userIds)
     {
         roleService.checkRoleDataScope(roleId);
+        ensureProjectRole(roleId);
         return toAjax(roleService.insertAuthUsers(roleId, userIds));
     }
 
@@ -254,9 +285,71 @@ public class SysRoleController extends BaseController
     @GetMapping(value = "/deptTree/{roleId}")
     public AjaxResult deptTree(@PathVariable("roleId") Long roleId)
     {
+        ensureProjectRole(roleId);
         AjaxResult ajax = AjaxResult.success();
         ajax.put("checkedKeys", deptService.selectDeptListByRoleId(roleId));
         ajax.put("depts", deptService.selectDeptTreeList(new SysDept()));
         return ajax;
+    }
+
+    private List<SysRole> filterProjectRoles(List<SysRole> roles)
+    {
+        return roles.stream().filter(this::isProjectRole).collect(Collectors.toList());
+    }
+
+    private boolean isProjectRole(SysRole role)
+    {
+        return role != null && PROJECT_ROLE_KEYS.contains(role.getRoleKey());
+    }
+
+    private void ensureProjectRole(Long roleId)
+    {
+        SysRole role = roleService.selectRoleById(roleId);
+        if (!isProjectRole(role))
+        {
+            throw new ServiceException("仅允许操作竞赛项目角色");
+        }
+    }
+
+    private void validateProjectRole(SysRole role)
+    {
+        if (!PROJECT_ROLE_KEYS.contains(role.getRoleKey()))
+        {
+            throw new ServiceException("仅允许维护竞赛项目角色");
+        }
+    }
+
+    private void validateProjectMenuIds(Long[] menuIds)
+    {
+        if (menuIds == null || menuIds.length == 0)
+        {
+            return;
+        }
+
+        for (Long menuId : menuIds)
+        {
+            if (!isProjectMenu(menuId))
+            {
+                throw new ServiceException("角色仅允许绑定权限管理和竞赛运营下的菜单权限");
+            }
+        }
+    }
+
+    private boolean isProjectMenu(Long menuId)
+    {
+        SysMenu menu = menuService.selectMenuById(menuId);
+        while (menu != null)
+        {
+            if (PROJECT_MENU_ROOT_IDS.contains(menu.getMenuId()))
+            {
+                return true;
+            }
+            if (menu.getParentId() == null || menu.getParentId() == 0L)
+            {
+                break;
+            }
+            menu = menuService.selectMenuById(menu.getParentId());
+        }
+        return false;
     }
 }

@@ -28,5 +28,7 @@ update sys_menu set menu_name = '管理员账号' where menu_id = 100;
 update sys_menu set menu_name = '权限角色' where menu_id = 101;
 update sys_menu set menu_name = '菜单权限' where menu_id = 102;
 
+update sys_config set config_value = 'true' where config_key = 'sys.account.captchaEnabled';
+
 update sys_user set nick_name = '平台管理员' where user_name = 'admin';
 update sys_user set nick_name = '演示账号' where user_name = 'ry';
