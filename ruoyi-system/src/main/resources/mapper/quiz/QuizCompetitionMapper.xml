@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.QuizCompetitionMapper">
+
+    <resultMap id="QuizCompetitionResult" type="com.ruoyi.system.domain.QuizCompetition">
+        <id property="id" column="id" />
+        <result property="title" column="title" />
+        <result property="description" column="description" />
+        <result property="startDate" column="startDate" />
+        <result property="endDate" column="endDate" />
+        <result property="status" column="status" />
+        <result property="totalPoints" column="totalPoints" />
+        <result property="questionCount" column="questionCount" />
+        <result property="questionTitles" column="questionTitles" />
+        <result property="createTime" column="createdAt" />
+    </resultMap>
+
+    <resultMap id="QuizCompetitionQuestionResult" type="com.ruoyi.system.domain.QuizQuestion">
+        <id property="id" column="id" />
+        <result property="title" column="title" />
+        <result property="content" column="content" />
+        <result property="optionsJson" column="options" />
+        <result property="correctAnswer" column="correctAnswer" />
+        <result property="difficulty" column="difficulty" />
+        <result property="category" column="category" />
+        <result property="points" column="points" />
+        <result property="createTime" column="createdAt" />
+    </resultMap>
+
+    <sql id="selectCompetitionColumns">
+        select c.id, c.title, c.description, c.startDate, c.endDate, c.status, c.totalPoints, c.createdAt,
+               count(cq.questionId) as questionCount,
+               group_concat(q.title order by cq.questionOrder separator ' | ') as questionTitles
+        from competitions c
+        left join competition_questions cq on cq.competitionId = c.id
+        left join questions q on q.id = cq.questionId
+    </sql>
+
+    <select id="selectCompetitionList" parameterType="com.ruoyi.system.domain.QuizCompetition" resultMap="QuizCompetitionResult">
+        <include refid="selectCompetitionColumns" />
+        <where>
+            <if test="title != null and title != ''">
+                and c.title like concat('%', #{title}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                and c.status = #{status}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and c.startDate &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and c.endDate &lt;= #{params.endTime}
+            </if>
+        </where>
+        group by c.id, c.title, c.description, c.startDate, c.endDate, c.status, c.totalPoints, c.createdAt
+        order by c.startDate desc, c.id desc
+    </select>
+
+    <select id="selectAllCompetitions" resultMap="QuizCompetitionResult">
+        select id, title, description, startDate, endDate, status, totalPoints, createdAt
+        from competitions
+        order by id desc
+    </select>
+
+    <select id="selectCompetitionById" parameterType="Long" resultMap="QuizCompetitionResult">
+        select id, title, description, startDate, endDate, status, totalPoints, createdAt
+        from competitions
+        where id = #{id}
+    </select>
+
+    <select id="selectCompetitionQuestionIds" parameterType="Long" resultType="Long">
+        select questionId
+        from competition_questions
+        where competitionId = #{competitionId}
+        order by questionOrder asc, questionId asc
+    </select>
+
+    <select id="selectCompetitionQuestions" parameterType="Long" resultMap="QuizCompetitionQuestionResult">
+        select q.id, q.title, q.content, q.options, q.correctAnswer, q.difficulty, q.category, q.points, q.createdAt
+        from competition_questions cq
+        inner join questions q on q.id = cq.questionId
+        where cq.competitionId = #{competitionId}
+        order by cq.questionOrder asc, q.id asc
+    </select>
+
+    <insert id="insertCompetition" parameterType="com.ruoyi.system.domain.QuizCompetition" useGeneratedKeys="true" keyProperty="id">
+        insert into competitions (
+            title,
+            description,
+            startDate,
+            endDate,
+            status,
+            totalPoints,
+            createdAt
+        ) values (
+            #{title},
+            #{description},
+            #{startDate},
+            #{endDate},
+            #{status},
+            #{totalPoints},
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateCompetition" parameterType="com.ruoyi.system.domain.QuizCompetition">
+        update competitions
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="startDate != null">startDate = #{startDate},</if>
+            <if test="endDate != null">endDate = #{endDate},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="totalPoints != null">totalPoints = #{totalPoints},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateCompetitionStatus">
+        update competitions
+        set status = #{status}
+        where id = #{id}
+    </update>
+
+    <insert id="insertCompetitionQuestions">
+        insert into competition_questions (competitionId, questionId, questionOrder)
+        values
+        <foreach collection="questionIds" item="questionId" index="index" separator=",">
+            (#{competitionId}, #{questionId}, #{index})
+        </foreach>
+    </insert>
+
+    <delete id="deleteCompetitionQuestionsByCompetitionId" parameterType="Long">
+        delete from competition_questions where competitionId = #{id}
+    </delete>
+
+    <delete id="deleteCompetitionQuestionsByCompetitionIds" parameterType="Long">
+        delete from competition_questions
+        where competitionId in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteCompetitionParticipantsByCompetitionIds" parameterType="Long">
+        delete from competition_participants
+        where competitionId in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteCompetitionByIds" parameterType="Long">
+        delete from competitions
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

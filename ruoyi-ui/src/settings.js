@@ -57,5 +57,5 @@ module.exports = {
   /**
    * 底部版权文本内容
    */
-  footerContent: 'Copyright © 2018-2026 RuoYi. All Rights Reserved.'
+  footerContent: 'Copyright © 2026 密码知识竞赛管理平台. All Rights Reserved.'
 }
