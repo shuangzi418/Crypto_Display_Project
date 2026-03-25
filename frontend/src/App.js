@@ -7,7 +7,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Quiz from './components/Quiz';
 import Ranking from './components/Ranking';
-import Admin from './components/Admin';
+import AdminPortalEntry from './components/AdminPortalEntry';
 import UserSettings from './components/UserSettings';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
@@ -54,7 +54,6 @@ function AppShell() {
   const getSelectedMenuKey = () => {
     if (location.pathname.startsWith('/quiz')) return 'quiz';
     if (location.pathname.startsWith('/ranking')) return 'ranking';
-    if (location.pathname.startsWith('/admin')) return 'admin';
     if (location.pathname.startsWith('/settings')) return 'settings';
     if (location.pathname.startsWith('/login')) return 'login';
     if (location.pathname.startsWith('/register')) return 'register';
@@ -75,13 +74,6 @@ function AppShell() {
       label: <Link to="/ranking">排行榜</Link>
     }
   ];
-
-  if (isAuthenticated && user && user.role === 'admin') {
-    menuItems.push({
-      key: 'admin',
-      label: <Link to="/admin">管理平台</Link>
-    });
-  }
 
   if (isAuthenticated && user) {
     menuItems.push(
@@ -131,9 +123,12 @@ function AppShell() {
             <Route path="/ranking">
               <Ranking />
             </Route>
-            <AdminRoute path="/admin" isAuthenticated={isAuthenticated} isLoading={loading} user={user}>
-              <Admin />
-            </AdminRoute>
+            <Route path="/admin-login">
+              <AdminPortalEntry />
+            </Route>
+            <Route path="/admin">
+              <Redirect to="/admin-login" />
+            </Route>
             <PublicRoute path="/login" isAuthenticated={isAuthenticated} isLoading={loading}>
               <Login />
             </PublicRoute>
@@ -198,31 +193,18 @@ function PublicRoute({ children, isAuthenticated, isLoading, ...rest }) {
   );
 }
 
-function AdminRoute({ children, isAuthenticated, isLoading, user, ...rest }) {
-  return (
-    <Route
-      {...rest}
-      render={() => {
-        if (isLoading) {
-          return <RouteLoading />;
-        }
-
-        if (!isAuthenticated) {
-          return <Redirect to="/login" />;
-        }
-
-        return user && user.role === 'admin' ? children : <Redirect to="/" />;
-      }}
-    />
-  );
-}
-
 // 首页组件
 function HomePage() {
   return (
     <div style={{ padding: '24px', background: '#fff', minHeight: 380 }}>
       <h1>欢迎来到密码知识竞答系统</h1>
       <p>这是一个专注于密码学知识的在线答题平台，旨在普及密码学知识，提高安全意识。</p>
+      <p>
+        当前站点仅保留参赛用户入口，管理员请使用
+        {' '}
+        <Link to="/admin-login">独立后台入口</Link>
+        。
+      </p>
       <p>系统特点：</p>
       <ul>
         <li>丰富的密码学题库</li>

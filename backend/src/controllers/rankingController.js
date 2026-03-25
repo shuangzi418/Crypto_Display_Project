@@ -1,16 +1,16 @@
-const User = require('../models/User');
+const { User } = require('../models');
 
-// 获取用户排行榜
 exports.getUserRanking = async (req, res) => {
   try {
-    const users = await User.find({ role: 'user' })
-      .select('username nickname nicknameStatus avatar avatarStatus score')
-      .sort({ score: -1 });
+    const users = await User.findAll({
+      where: { role: 'user' },
+      attributes: ['id', 'username', 'nickname', 'nicknameStatus', 'avatar', 'avatarStatus', 'score'],
+      order: [['score', 'DESC']]
+    });
 
-    // 计算排名
     const ranking = users.map((user, index) => ({
       rank: index + 1,
-      userId: user._id,
+      userId: String(user.id),
       username: user.username,
       nickname: user.nickname,
       nicknameStatus: user.nicknameStatus,

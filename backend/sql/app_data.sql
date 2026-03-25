@@ -1,0 +1,7 @@
+-- app_data.sql
+-- Exported at 2026-03-23T05:24:30.943Z
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS=0;
+CREATE DATABASE IF NOT EXISTS `crypto_quiz` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `crypto_quiz`;
+SET FOREIGN_KEY_CHECKS=1;

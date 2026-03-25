@@ -11,14 +11,10 @@ const Login = () => {
   const history = useHistory();
   const { isAuthenticated, user } = useSelector(state => state.user);
 
-  // 如果已经登录，根据角色跳转到不同页面
+  // 如果已经登录，统一回到用户侧首页
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === 'admin') {
-        history.replace('/admin');
-      } else {
-        history.replace('/');
-      }
+      history.replace('/');
     }
   }, [isAuthenticated, user, history]);
 
@@ -33,8 +29,15 @@ const Login = () => {
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
-      <Card title="登录" style={{ width: 400 }}>
+      <Card title="用户登录" style={{ width: 400 }}>
         {error && <Alert message={error} type="error" style={{ marginBottom: '20px' }} />}
+        <Alert
+          message="管理员请使用独立后台"
+          description={<Link to="/admin-login">前往管理员登录入口</Link>}
+          type="info"
+          showIcon
+          style={{ marginBottom: '20px' }}
+        />
         <Form
           form={form}
           layout="vertical"

@@ -1,17 +1,24 @@
-const mongoose = require('mongoose');
-const Competition = require('./src/models/Competition');
+const { sequelize, Competition, Question } = require('./src/models');
 
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/crypto-quiz', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
+async function checkCompetitionStructure() {
+  try {
+    await sequelize.authenticate();
 
-// Check competition structure
-Competition.findOne({}, (err, competition) => {
-  if (err) {
-    console.error('Error finding competition:', err);
-  } else {
+    const competition = await Competition.findOne({
+      include: [
+        {
+          model: Question,
+          as: 'questions',
+          through: { attributes: [] }
+        }
+      ]
+    });
+
+    if (!competition) {
+      console.log('No competition found');
+      return;
+    }
+
     console.log('Competition structure:');
     console.log('Title:', competition.title);
     console.log('Description:', competition.description);
@@ -20,18 +27,21 @@ Competition.findOne({}, (err, competition) => {
     console.log('Status:', competition.status);
     console.log('Questions type:', typeof competition.questions);
     console.log('Questions is array:', Array.isArray(competition.questions));
+
     if (Array.isArray(competition.questions)) {
       console.log('Questions length:', competition.questions.length);
+
       if (competition.questions.length > 0) {
         console.log('First question type:', typeof competition.questions[0]);
-        if (typeof competition.questions[0] === 'object') {
-          console.log('First question structure:', competition.questions[0]);
-        } else {
-          console.log('First question:', competition.questions[0]);
-        }
+        console.log('First question structure:', competition.questions[0].toJSON());
       }
     }
+  } catch (error) {
+    console.error('Error finding competition:', error);
+  } finally {
+    await sequelize.close();
+    process.exit();
   }
-  mongoose.disconnect();
-  process.exit();
-});
+}
+
+checkCompetitionStructure();

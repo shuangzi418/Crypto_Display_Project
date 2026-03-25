@@ -1,57 +1,43 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const BaseModel = require('./BaseModel');
 
-const CompetitionSchema = new mongoose.Schema({
+class Competition extends BaseModel {}
+
+Competition.init({
   title: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   description: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false
   },
   startDate: {
-    type: Date,
-    required: true
+    type: DataTypes.DATE,
+    allowNull: false
   },
   endDate: {
-    type: Date,
-    required: true
+    type: DataTypes.DATE,
+    allowNull: false
   },
-  questions: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Question'
-    }
-  ],
-  participants: [
-    {
-      user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-      },
-      score: {
-        type: Number,
-        default: 0
-      },
-      completed: {
-        type: Boolean,
-        default: false
-      }
-    }
-  ],
   status: {
-    type: String,
-    default: 'upcoming',
-    enum: ['upcoming', 'active', 'ended']
+    type: DataTypes.ENUM('upcoming', 'active', 'ended'),
+    defaultValue: 'upcoming'
   },
   totalPoints: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   },
   createdAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
+}, {
+  sequelize,
+  modelName: 'Competition',
+  tableName: 'competitions',
+  timestamps: false
 });
 
-module.exports = mongoose.model('Competition', CompetitionSchema);
+module.exports = Competition;

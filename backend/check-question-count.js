@@ -1,19 +1,16 @@
-const mongoose = require('mongoose');
-const Question = require('./src/models/Question');
+const { sequelize, Question } = require('./src/models');
 
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/crypto-quiz', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
-
-// Check question count
-Question.countDocuments({}, (err, count) => {
-  if (err) {
-    console.error('Error counting questions:', err);
-  } else {
+async function checkQuestionCount() {
+  try {
+    await sequelize.authenticate();
+    const count = await Question.count();
     console.log('Total questions in database:', count);
+  } catch (error) {
+    console.error('Error counting questions:', error);
+  } finally {
+    await sequelize.close();
+    process.exit();
   }
-  mongoose.disconnect();
-  process.exit();
-});
+}
+
+checkQuestionCount();

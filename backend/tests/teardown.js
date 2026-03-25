@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+const { sequelize } = require('../src/models');
 
 module.exports = async () => {
-  await mongoose.connection.close();
-  console.log('MongoDB connection closed');
+  await sequelize.close();
+  console.log('Database connection closed');
 };

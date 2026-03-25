@@ -1,0 +1,57 @@
+{
+  "database": "crypto_quiz",
+  "generatedAt": "2026-03-23T05:24:30.954Z",
+  "files": [
+    {
+      "fileName": "schema.sql",
+      "label": "schema",
+      "tables": [
+        "competition_participants",
+        "competition_questions",
+        "competitions",
+        "messages",
+        "questions",
+        "submissions",
+        "users"
+      ]
+    },
+    {
+      "fileName": "users.sql",
+      "label": "users",
+      "tables": [
+        "users"
+      ]
+    },
+    {
+      "fileName": "questions.sql",
+      "label": "questions",
+      "tables": [
+        "questions"
+      ]
+    },
+    {
+      "fileName": "app_data.sql",
+      "label": "app_data",
+      "tables": [
+        "competitions",
+        "competition_questions",
+        "competition_participants",
+        "messages",
+        "submissions"
+      ]
+    },
+    {
+      "fileName": "crypto_quiz.sql",
+      "label": "full",
+      "tables": [
+        "competition_participants",
+        "competition_questions",
+        "competitions",
+        "messages",
+        "questions",
+        "submissions",
+        "users"
+      ]
+    }
+  ]
+}

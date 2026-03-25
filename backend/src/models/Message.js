@@ -1,32 +1,35 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const BaseModel = require('./BaseModel');
 
-const MessageSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
+class Message extends BaseModel {}
+
+Message.init({
   title: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   content: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false
   },
   isRead: {
-    type: Boolean,
-    default: false
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   },
   type: {
-    type: String,
-    default: 'notification',
-    enum: ['notification', 'system', 'alert']
+    type: DataTypes.ENUM('notification', 'system', 'alert'),
+    defaultValue: 'notification'
   },
   createdAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
+}, {
+  sequelize,
+  modelName: 'Message',
+  tableName: 'messages',
+  timestamps: false
 });
 
-module.exports = mongoose.model('Message', MessageSchema);
+module.exports = Message;

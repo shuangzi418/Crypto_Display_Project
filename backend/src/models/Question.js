@@ -1,41 +1,63 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const BaseModel = require('./BaseModel');
 
-const QuestionSchema = new mongoose.Schema({
+class Question extends BaseModel {}
+
+Question.init({
   title: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   content: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false
   },
-  options: [
-    {
-      type: String,
-      required: true
+  options: {
+    type: DataTypes.TEXT('long'),
+    allowNull: false,
+    get() {
+      const rawValue = this.getDataValue('options');
+
+      if (!rawValue) {
+        return [];
+      }
+
+      try {
+        return JSON.parse(rawValue);
+      } catch (error) {
+        return [];
+      }
+    },
+    set(value) {
+      this.setDataValue('options', JSON.stringify(Array.isArray(value) ? value : []));
     }
-  ],
+  },
   correctAnswer: {
-    type: Number,
-    required: true
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   difficulty: {
-    type: String,
-    required: true,
-    enum: ['easy', 'medium', 'hard']
+    type: DataTypes.ENUM('easy', 'medium', 'hard'),
+    allowNull: false
   },
   category: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   points: {
-    type: Number,
-    required: true
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   createdAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
+}, {
+  sequelize,
+  modelName: 'Question',
+  tableName: 'questions',
+  timestamps: false
 });
 
-module.exports = mongoose.model('Question', QuestionSchema);
+module.exports = Question;
