@@ -80,6 +80,14 @@ server_ip() {
   hostname -I 2>/dev/null | awk '{print $1}'
 }
 
+public_scheme() {
+  if [[ "$(current_env_value ENABLE_HTTPS)" == "true" ]]; then
+    printf 'https'
+  else
+    printf 'http'
+  fi
+}
+
 set_env_value() {
   local key="$1"
   local value="$2"
@@ -132,21 +140,6 @@ prepare_env_file() {
     cp "$ENV_TEMPLATE" "$ENV_FILE"
   fi
 
-  local host_ip frontend_url admin_url
-  host_ip="$(server_ip)"
-  frontend_url="http://${host_ip:-127.0.0.1}"
-  admin_url="http://${host_ip:-127.0.0.1}:8081"
-
-  ensure_secret_value JWT_SECRET replace_with_a_strong_secret change_this_jwt_secret
-  ensure_secret_value RUOYI_TOKEN_SECRET replace_with_another_strong_secret change_this_ruoyi_secret
-  ensure_secret_value MYSQL_ROOT_PASSWORD root123456
-  ensure_secret_value MYSQL_PASSWORD crypto_pass
-  ensure_secret_value ADMIN_PASSWORD change_this_password change_this_admin_password
-  ensure_env_value FRONTEND_URL "$frontend_url"
-  ensure_env_value CORS_ORIGIN "$frontend_url,$admin_url"
-  ensure_env_value REACT_APP_ADMIN_PORTAL_URL "$admin_url"
-  ensure_env_value RUOYI_API_DOCS_ENABLED false
-  ensure_env_value RUOYI_SWAGGER_UI_ENABLED false
   ensure_env_value ENABLE_HOST_NGINX false
   ensure_env_value ENABLE_HTTPS false
   ensure_env_value APP_DOMAIN ""
@@ -156,6 +149,33 @@ prepare_env_file() {
   ensure_env_value BACKEND_BIND_ADDRESS 0.0.0.0
   ensure_env_value RUOYI_ADMIN_BIND_ADDRESS 0.0.0.0
   ensure_env_value RUOYI_UI_BIND_ADDRESS 0.0.0.0
+
+  local host_ip frontend_url admin_url scheme app_domain admin_domain
+  host_ip="$(server_ip)"
+  scheme="$(public_scheme)"
+  app_domain="$(current_env_value APP_DOMAIN)"
+  admin_domain="$(current_env_value ADMIN_DOMAIN)"
+  frontend_url="${scheme}://${host_ip:-127.0.0.1}"
+  admin_url="${scheme}://${host_ip:-127.0.0.1}:8081"
+
+  if [[ -n "$app_domain" ]]; then
+    frontend_url="${scheme}://${app_domain}"
+  fi
+
+  if [[ -n "$admin_domain" ]]; then
+    admin_url="${scheme}://${admin_domain}"
+  fi
+
+  ensure_secret_value JWT_SECRET replace_with_a_strong_secret change_this_jwt_secret
+  ensure_secret_value RUOYI_TOKEN_SECRET replace_with_another_strong_secret change_this_ruoyi_secret
+  ensure_secret_value MYSQL_ROOT_PASSWORD root123456
+  ensure_secret_value MYSQL_PASSWORD crypto_pass
+  ensure_secret_value ADMIN_PASSWORD change_this_password change_this_admin_password
+  set_env_value FRONTEND_URL "$frontend_url"
+  set_env_value CORS_ORIGIN "$frontend_url,$admin_url"
+  set_env_value REACT_APP_ADMIN_PORTAL_URL "$admin_url"
+  ensure_env_value RUOYI_API_DOCS_ENABLED false
+  ensure_env_value RUOYI_SWAGGER_UI_ENABLED false
 
   if [[ "$(current_env_value ENABLE_HOST_NGINX)" == "true" ]]; then
     set_env_value FRONTEND_BIND_ADDRESS 127.0.0.1

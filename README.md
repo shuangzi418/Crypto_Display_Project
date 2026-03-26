@@ -290,6 +290,7 @@ LETSENCRYPT_EMAIL=ops@example.com
 
 - 开启 `ENABLE_HOST_NGINX=true` 后，安装脚本会自动把前台与后台容器改为仅监听 `127.0.0.1`
 - 宿主机 Nginx 会反向代理到普通前台和 RuoYi 后台
+- 安装脚本会自动根据 `APP_DOMAIN` / `ADMIN_DOMAIN` 生成 `FRONTEND_URL`、`CORS_ORIGIN` 和前端后台入口地址
 - 若同时设置 `ENABLE_HTTPS=true` 且域名已解析到服务器，会自动通过 Certbot 申请证书
 - 未提供域名时，脚本会跳过 HTTPS 申请，保留当前端口访问方式
 
