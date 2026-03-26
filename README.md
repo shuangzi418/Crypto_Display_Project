@@ -261,6 +261,12 @@ docker compose down
 bash scripts/deploy/install.sh
 ```
 
+后续更新并自动重启容器：
+
+```bash
+bash scripts/deploy/update.sh
+```
+
 该脚本会自动完成：
 
 - 环境检查（Linux、磁盘、内存、端口、Docker）
@@ -269,6 +275,23 @@ bash scripts/deploy/install.sh
 - 启动 `mysql`、`redis`、`backend`、`frontend`、`ruoyi-admin`、`ruoyi-ui`
 - 初始化或补齐 RuoYi 系统表、竞赛菜单、角色和清理脚本
 - 执行健康检查
+
+如果你希望接入宿主机 Nginx / 域名 / HTTPS，可在 `.env` 中配置：
+
+```env
+ENABLE_HOST_NGINX=true
+APP_DOMAIN=quiz.example.com
+ADMIN_DOMAIN=admin.example.com
+ENABLE_HTTPS=true
+LETSENCRYPT_EMAIL=ops@example.com
+```
+
+说明：
+
+- 开启 `ENABLE_HOST_NGINX=true` 后，安装脚本会自动把前台与后台容器改为仅监听 `127.0.0.1`
+- 宿主机 Nginx 会反向代理到普通前台和 RuoYi 后台
+- 若同时设置 `ENABLE_HTTPS=true` 且域名已解析到服务器，会自动通过 Certbot 申请证书
+- 未提供域名时，脚本会跳过 HTTPS 申请，保留当前端口访问方式
 
 只做环境检查而不安装，可执行：
 

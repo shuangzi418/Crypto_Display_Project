@@ -147,6 +147,29 @@ prepare_env_file() {
   ensure_env_value REACT_APP_ADMIN_PORTAL_URL "$admin_url"
   ensure_env_value RUOYI_API_DOCS_ENABLED false
   ensure_env_value RUOYI_SWAGGER_UI_ENABLED false
+  ensure_env_value ENABLE_HOST_NGINX false
+  ensure_env_value ENABLE_HTTPS false
+  ensure_env_value APP_DOMAIN ""
+  ensure_env_value ADMIN_DOMAIN ""
+  ensure_env_value LETSENCRYPT_EMAIL ""
+  ensure_env_value FRONTEND_BIND_ADDRESS 0.0.0.0
+  ensure_env_value BACKEND_BIND_ADDRESS 0.0.0.0
+  ensure_env_value RUOYI_ADMIN_BIND_ADDRESS 0.0.0.0
+  ensure_env_value RUOYI_UI_BIND_ADDRESS 0.0.0.0
+
+  if [[ "$(current_env_value ENABLE_HOST_NGINX)" == "true" ]]; then
+    set_env_value FRONTEND_BIND_ADDRESS 127.0.0.1
+    set_env_value BACKEND_BIND_ADDRESS 127.0.0.1
+    set_env_value RUOYI_ADMIN_BIND_ADDRESS 127.0.0.1
+    if [[ "$(current_env_value FRONTEND_PORT)" == "80" || -z "$(current_env_value FRONTEND_PORT)" ]]; then
+      set_env_value FRONTEND_PORT 3000
+    fi
+    if [[ -n "$(current_env_value ADMIN_DOMAIN)" ]]; then
+      set_env_value RUOYI_UI_BIND_ADDRESS 127.0.0.1
+    else
+      set_env_value RUOYI_UI_BIND_ADDRESS 0.0.0.0
+    fi
+  fi
 }
 
 deploy_stack() {
@@ -158,6 +181,11 @@ deploy_stack() {
 run_healthcheck() {
   print_step '执行健康检查'
   bash "$ROOT_DIR/scripts/deploy/healthcheck.sh"
+}
+
+configure_nginx_if_needed() {
+  print_step '检查 Nginx 反向代理配置'
+  bash "$ROOT_DIR/scripts/deploy/configure-nginx.sh"
 }
 
 print_summary() {
@@ -186,6 +214,7 @@ main() {
   deploy_stack
   print_step '初始化数据库脚本'
   bash "$ROOT_DIR/scripts/deploy/init-db.sh"
+  configure_nginx_if_needed
   run_healthcheck
   print_summary
 }

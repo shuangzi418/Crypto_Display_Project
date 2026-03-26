@@ -62,7 +62,7 @@ services:
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_PASS: ${EMAIL_PASS:-}
     ports:
-      - "5000:5000"
+      - "${BACKEND_BIND_ADDRESS:-0.0.0.0}:5000:5000"
 
   ruoyi-admin:
     build:
@@ -86,7 +86,7 @@ services:
       RUOYI_API_DOCS_ENABLED: ${RUOYI_API_DOCS_ENABLED:-false}
       RUOYI_SWAGGER_UI_ENABLED: ${RUOYI_SWAGGER_UI_ENABLED:-false}
     ports:
-      - "${RUOYI_ADMIN_PORT:-8080}:8080"
+      - "${RUOYI_ADMIN_BIND_ADDRESS:-0.0.0.0}:${RUOYI_ADMIN_PORT:-8080}:8080"
 
   ruoyi-ui:
     build:
@@ -96,7 +96,7 @@ services:
     depends_on:
       - ruoyi-admin
     ports:
-      - "${RUOYI_UI_PORT:-8081}:80"
+      - "${RUOYI_UI_BIND_ADDRESS:-0.0.0.0}:${RUOYI_UI_PORT:-8081}:80"
 
   frontend:
     build:
@@ -109,7 +109,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_BIND_ADDRESS:-0.0.0.0}:${FRONTEND_PORT:-80}:80"
 
 volumes:
   mysql_data:
