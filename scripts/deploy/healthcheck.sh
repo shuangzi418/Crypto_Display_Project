@@ -17,8 +17,15 @@ MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-root123456}"
 check_url() {
   local name="$1"
   local url="$2"
+  local attempt
   printf '[CHECK] %s -> %s\n' "$name" "$url"
-  curl --fail --silent --show-error "$url" >/dev/null
+  for attempt in $(seq 1 20); do
+    if curl --fail --silent --show-error "$url" >/dev/null; then
+      return 0
+    fi
+    sleep 3
+  done
+  return 1
 }
 
 main() {
