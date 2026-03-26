@@ -38,6 +38,14 @@ CryptoQuizSystem/
 |   |-- public/
 |   |-- src/
 |   `-- package.json
+|-- admin/
+|   `-- ruoyi-vue/
+|       |-- ruoyi-admin/
+|       |-- ruoyi-system/
+|       |-- ruoyi-ui/
+|       `-- sql/
+|-- scripts/
+|   `-- deploy/
 |-- .gitignore
 |-- HTTPS_SETUP.md
 |-- package.json
@@ -236,6 +244,49 @@ docker compose down
 ```
 
 如果需要保留数据库数据，请不要删除 `mysql_data` 卷。
+
+## 服务器一键部署
+
+当前仓库已支持将普通前端、Node API、RuoYi 后台、MySQL、Redis 一起部署到同一台 Linux 服务器。
+
+适用前提：
+
+- Ubuntu / Debian / CentOS / Rocky 等常见 Linux 服务器
+- 拥有 `sudo` 权限
+- 服务器可以访问 Docker 官方安装源与 npm/maven 镜像源
+
+一键部署命令：
+
+```bash
+bash scripts/deploy/install.sh
+```
+
+该脚本会自动完成：
+
+- 环境检查（Linux、磁盘、内存、端口、Docker）
+- 缺失工具安装（curl、git、Docker）
+- 生成或补齐 `.env`
+- 启动 `mysql`、`redis`、`backend`、`frontend`、`ruoyi-admin`、`ruoyi-ui`
+- 初始化或补齐 RuoYi 系统表、竞赛菜单、角色和清理脚本
+- 执行健康检查
+
+只做环境检查而不安装，可执行：
+
+```bash
+bash scripts/deploy/check-env.sh
+```
+
+部署后的默认访问地址：
+
+- 用户前台：`http://服务器IP/`
+- Node API：`http://服务器IP:5000/health`
+- RuoYi 后台：`http://服务器IP:8081/login`
+
+说明：
+
+- RuoYi 后台初始化账号仍为 `admin / admin123`
+- 首次登录后会被强制要求修改密码
+- Swagger / SpringDoc 在部署配置下默认关闭
 
 ## 批量导入题目
 

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.QuizBusinessUserMapper">
+
+    <resultMap id="QuizBusinessUserResult" type="com.ruoyi.system.domain.QuizBusinessUser">
+        <id property="id" column="id" />
+        <result property="username" column="username" />
+        <result property="nickname" column="nickname" />
+        <result property="avatar" column="avatar" />
+        <result property="avatarStatus" column="avatarStatus" />
+        <result property="nicknameStatus" column="nicknameStatus" />
+        <result property="email" column="email" />
+        <result property="score" column="score" />
+        <result property="role" column="role" />
+        <result property="createTime" column="createdAt" />
+    </resultMap>
+
+    <sql id="selectBusinessUserColumns">
+        select id, username, nickname, avatar, avatarStatus, nicknameStatus, email, score, role, createdAt
+        from users
+    </sql>
+
+    <sql id="businessUserWhere">
+        <where>
+            <if test="id != null">
+                and id = #{id}
+            </if>
+            <if test="username != null and username != ''">
+                and username like concat('%', #{username}, '%')
+            </if>
+            <if test="nickname != null and nickname != ''">
+                and nickname like concat('%', #{nickname}, '%')
+            </if>
+            <if test="email != null and email != ''">
+                and email like concat('%', #{email}, '%')
+            </if>
+            <if test="role != null and role != ''">
+                and role = #{role}
+            </if>
+            <if test="nicknameStatus != null and nicknameStatus != ''">
+                and nicknameStatus = #{nicknameStatus}
+            </if>
+            <if test="avatarStatus != null and avatarStatus != ''">
+                and avatarStatus = #{avatarStatus}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (
+                    username like concat('%', #{keyword}, '%')
+                    or nickname like concat('%', #{keyword}, '%')
+                    or email like concat('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and createdAt &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and createdAt &lt;= #{params.endTime}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectBusinessUserList" parameterType="com.ruoyi.system.domain.QuizBusinessUser" resultMap="QuizBusinessUserResult">
+        <include refid="selectBusinessUserColumns" />
+        <include refid="businessUserWhere" />
+        order by createdAt desc, id desc
+    </select>
+
+    <select id="selectBusinessUserById" parameterType="Long" resultMap="QuizBusinessUserResult">
+        <include refid="selectBusinessUserColumns" />
+        where id = #{id}
+    </select>
+
+    <select id="selectPendingNicknames" parameterType="com.ruoyi.system.domain.QuizBusinessUser" resultMap="QuizBusinessUserResult">
+        <include refid="selectBusinessUserColumns" />
+        <where>
+            nicknameStatus = 'pending'
+            and role &lt;&gt; 'admin'
+            <if test="id != null">
+                and id = #{id}
+            </if>
+            <if test="username != null and username != ''">
+                and username like concat('%', #{username}, '%')
+            </if>
+            <if test="nickname != null and nickname != ''">
+                and nickname like concat('%', #{nickname}, '%')
+            </if>
+            <if test="email != null and email != ''">
+                and email like concat('%', #{email}, '%')
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (
+                    username like concat('%', #{keyword}, '%')
+                    or nickname like concat('%', #{keyword}, '%')
+                    or email like concat('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and createdAt &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and createdAt &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by createdAt desc, id desc
+    </select>
+
+    <select id="selectPendingAvatars" parameterType="com.ruoyi.system.domain.QuizBusinessUser" resultMap="QuizBusinessUserResult">
+        <include refid="selectBusinessUserColumns" />
+        <where>
+            avatarStatus = 'pending'
+            and role &lt;&gt; 'admin'
+            <if test="id != null">
+                and id = #{id}
+            </if>
+            <if test="username != null and username != ''">
+                and username like concat('%', #{username}, '%')
+            </if>
+            <if test="nickname != null and nickname != ''">
+                and nickname like concat('%', #{nickname}, '%')
+            </if>
+            <if test="email != null and email != ''">
+                and email like concat('%', #{email}, '%')
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (
+                    username like concat('%', #{keyword}, '%')
+                    or nickname like concat('%', #{keyword}, '%')
+                    or email like concat('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and createdAt &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and createdAt &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by createdAt desc, id desc
+    </select>
+
+    <update id="updateBusinessUserRole" parameterType="com.ruoyi.system.domain.QuizBusinessUser">
+        update users
+        set role = #{role}
+        where id = #{id}
+    </update>
+
+    <update id="updateNicknameStatus" parameterType="com.ruoyi.system.domain.QuizBusinessUser">
+        update users
+        set nicknameStatus = #{nicknameStatus}
+        where id = #{id}
+    </update>
+
+    <update id="updateAvatarStatus" parameterType="com.ruoyi.system.domain.QuizBusinessUser">
+        update users
+        set avatarStatus = #{avatarStatus}
+        where id = #{id}
+    </update>
+
+    <insert id="insertReviewMessage">
+        insert into messages (title, content, isRead, type, createdAt, userId)
+        values (#{title}, #{content}, 0, #{type}, sysdate(), #{userId})
+    </insert>
+</mapper>

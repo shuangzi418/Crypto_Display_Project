@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.QuizDataCenterMapper">
+
+    <resultMap id="QuizTableStatResult" type="com.ruoyi.system.domain.QuizDataTableStat">
+        <result property="tableName" column="tableName" />
+        <result property="displayName" column="displayName" />
+        <result property="recordCount" column="recordCount" />
+        <result property="description" column="description" />
+        <result property="routePath" column="routePath" />
+        <result property="routeLabel" column="routeLabel" />
+    </resultMap>
+
+    <resultMap id="QuizRecentCompetitionResult" type="com.ruoyi.system.domain.QuizCompetition">
+        <id property="id" column="id" />
+        <result property="title" column="title" />
+        <result property="status" column="status" />
+        <result property="startDate" column="startDate" />
+        <result property="endDate" column="endDate" />
+        <result property="questionCount" column="questionCount" />
+        <result property="participantCount" column="participantCount" />
+        <result property="totalPoints" column="totalPoints" />
+        <result property="createTime" column="createTime" />
+    </resultMap>
+
+    <resultMap id="QuizPendingReviewResult" type="com.ruoyi.system.domain.QuizBusinessUser">
+        <id property="id" column="id" />
+        <result property="username" column="username" />
+        <result property="nickname" column="nickname" />
+        <result property="score" column="score" />
+        <result property="reviewType" column="reviewType" />
+        <result property="reviewStatus" column="reviewStatus" />
+        <result property="createTime" column="createTime" />
+    </resultMap>
+
+    <resultMap id="QuizTopUserResult" type="com.ruoyi.system.domain.QuizLeaderboardEntry">
+        <result property="userId" column="userId" />
+        <result property="username" column="username" />
+        <result property="nickname" column="nickname" />
+        <result property="nicknameStatus" column="nicknameStatus" />
+        <result property="avatar" column="avatar" />
+        <result property="avatarStatus" column="avatarStatus" />
+        <result property="score" column="score" />
+    </resultMap>
+
+    <select id="selectCoreMetrics" resultType="java.util.HashMap">
+        select
+            (select count(*) from questions) as questionCount,
+            (select count(*) from competitions) as competitionCount,
+            (select count(*) from competitions where status = 'active') as activeCompetitionCount,
+            (select count(*) from users where role = 'user') as userCount,
+            (select count(*) from competition_participants) as participantCount,
+            (select count(*) from submissions) as submissionCount,
+            (select count(*) from messages) as messageCount,
+            (select count(*) from users where role = 'user' and (nicknameStatus = 'pending' or avatarStatus = 'pending')) as pendingReviewCount
+    </select>
+
+    <select id="selectTableStats" resultMap="QuizTableStatResult">
+        select * from (
+            select 1 as sortOrder, 'questions' as tableName, '题库数据' as displayName, count(*) as recordCount,
+                   '保存赛题标题、题干、选项、答案、分类与分值。' as description,
+                   '/quiz/question' as routePath, '进入题目管理' as routeLabel
+            from questions
+            union all
+            select 2 as sortOrder, 'competitions' as tableName, '竞赛数据' as displayName, count(*) as recordCount,
+                   '保存竞赛时间、状态、总分与赛题编排信息。' as description,
+                   '/quiz/competition' as routePath, '进入竞赛管理' as routeLabel
+            from competitions
+            union all
+            select 3 as sortOrder, 'competition_questions' as tableName, '竞赛题目关系' as displayName, count(*) as recordCount,
+                   '记录每场竞赛与题目的关联顺序。' as description,
+                   '/quiz/competition' as routePath, '查看竞赛编排' as routeLabel
+            from competition_questions
+            union all
+            select 4 as sortOrder, 'competition_participants' as tableName, '参赛成绩数据' as displayName, count(*) as recordCount,
+                   '保存用户参赛得分与完赛状态。' as description,
+                   '/quiz/leaderboard' as routePath, '查看排行榜' as routeLabel
+            from competition_participants
+            union all
+            select 5 as sortOrder, 'submissions' as tableName, '答题提交记录' as displayName, count(*) as recordCount,
+                   '记录每次答题提交与判题结果。' as description,
+                   '/quiz/leaderboard' as routePath, '查看数据表现' as routeLabel
+            from submissions
+            union all
+            select 6 as sortOrder, 'users' as tableName, '业务用户数据' as displayName, count(*) as recordCount,
+                   '保存参赛用户账号、昵称、头像与积分。' as description,
+                   '/quiz/user' as routePath, '进入业务用户' as routeLabel
+            from users
+            union all
+            select 7 as sortOrder, 'messages' as tableName, '站内消息数据' as displayName, count(*) as recordCount,
+                   '保存审核通知和业务侧消息提醒。' as description,
+                   '/quiz/nickname-audit' as routePath, '查看审核流程' as routeLabel
+            from messages
+        ) stats
+        order by sortOrder asc
+    </select>
+
+    <select id="selectRecentCompetitions" resultMap="QuizRecentCompetitionResult">
+        select
+            c.id,
+            c.title,
+            c.status,
+            c.startDate,
+            c.endDate,
+            c.totalPoints,
+            c.createdAt as createTime,
+            count(distinct cq.questionId) as questionCount,
+            count(distinct cp.userId) as participantCount
+        from competitions c
+        left join competition_questions cq on cq.competitionId = c.id
+        left join competition_participants cp on cp.competitionId = c.id
+        group by c.id, c.title, c.status, c.startDate, c.endDate, c.totalPoints, c.createdAt
+        order by c.createdAt desc, c.id desc
+        limit 6
+    </select>
+
+    <select id="selectPendingReviews" resultMap="QuizPendingReviewResult">
+        select * from (
+            select
+                u.id,
+                u.username,
+                u.nickname,
+                u.score,
+                'nickname' as reviewType,
+                u.nicknameStatus as reviewStatus,
+                u.createdAt as createTime
+            from users u
+            where u.role = 'user' and u.nicknameStatus = 'pending'
+            union all
+            select
+                u.id,
+                u.username,
+                u.nickname,
+                u.score,
+                'avatar' as reviewType,
+                u.avatarStatus as reviewStatus,
+                u.createdAt as createTime
+            from users u
+            where u.role = 'user' and u.avatarStatus = 'pending'
+        ) reviews
+        order by createTime desc, id desc
+        limit 8
+    </select>
+
+    <select id="selectTopUsers" resultMap="QuizTopUserResult">
+        select
+            u.id as userId,
+            u.username,
+            u.nickname,
+            u.nicknameStatus,
+            u.avatar,
+            u.avatarStatus,
+            u.score
+        from users u
+        where u.role = 'user'
+        order by u.score desc, u.createdAt asc, u.id asc
+        limit 8
+    </select>
+</mapper>

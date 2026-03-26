@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.QuizLeaderboardMapper">
+
+    <resultMap id="QuizLeaderboardResult" type="com.ruoyi.system.domain.QuizLeaderboardEntry">
+        <result property="rank" column="rank" />
+        <result property="userId" column="userId" />
+        <result property="username" column="username" />
+        <result property="nickname" column="nickname" />
+        <result property="nicknameStatus" column="nicknameStatus" />
+        <result property="avatar" column="avatar" />
+        <result property="avatarStatus" column="avatarStatus" />
+        <result property="score" column="score" />
+        <result property="completed" column="completed" />
+        <result property="competitionId" column="competitionId" />
+        <result property="competitionTitle" column="competitionTitle" />
+    </resultMap>
+
+    <resultMap id="QuizCompetitionOptionResult" type="com.ruoyi.system.domain.QuizCompetition">
+        <id property="id" column="id" />
+        <result property="title" column="title" />
+        <result property="status" column="status" />
+        <result property="startDate" column="startDate" />
+        <result property="endDate" column="endDate" />
+        <result property="questionCount" column="questionCount" />
+        <result property="totalPoints" column="totalPoints" />
+    </resultMap>
+
+    <select id="selectOverallLeaderboardList" parameterType="com.ruoyi.system.domain.QuizLeaderboardEntry" resultMap="QuizLeaderboardResult">
+        select
+            u.id as userId,
+            u.username,
+            u.nickname,
+            u.nicknameStatus,
+            u.avatar,
+            u.avatarStatus,
+            u.score,
+            null as completed,
+            null as competitionId,
+            null as competitionTitle
+        from users u
+        <where>
+            u.role = 'user'
+            <if test="keyword != null and keyword != ''">
+                and (
+                    u.username like concat('%', #{keyword}, '%')
+                    or u.nickname like concat('%', #{keyword}, '%')
+                    or u.email like concat('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+        order by u.score desc, u.createdAt asc, u.id asc
+    </select>
+
+    <select id="selectCompetitionLeaderboardList" parameterType="com.ruoyi.system.domain.QuizLeaderboardEntry" resultMap="QuizLeaderboardResult">
+        select
+            u.id as userId,
+            u.username,
+            u.nickname,
+            u.nicknameStatus,
+            u.avatar,
+            u.avatarStatus,
+            cp.score as score,
+            cp.completed,
+            c.id as competitionId,
+            c.title as competitionTitle
+        from competition_participants cp
+        inner join users u on u.id = cp.userId
+        inner join competitions c on c.id = cp.competitionId
+        <where>
+            cp.competitionId = #{competitionId}
+            and u.role = 'user'
+            <if test="keyword != null and keyword != ''">
+                and (
+                    u.username like concat('%', #{keyword}, '%')
+                    or u.nickname like concat('%', #{keyword}, '%')
+                    or u.email like concat('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+        order by cp.score desc, cp.completed desc, u.createdAt asc, u.id asc
+    </select>
+
+    <select id="selectLeaderboardCompetitionOptions" resultMap="QuizCompetitionOptionResult">
+        select
+            c.id,
+            c.title,
+            c.status,
+            c.startDate,
+            c.endDate,
+            c.totalPoints,
+            count(cq.questionId) as questionCount
+        from competitions c
+        left join competition_questions cq on cq.competitionId = c.id
+        group by c.id, c.title, c.status, c.startDate, c.endDate, c.totalPoints
+        order by c.startDate desc, c.id desc
+    </select>
+</mapper>
