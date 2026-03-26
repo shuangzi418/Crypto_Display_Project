@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 -- 密码知识竞赛管理平台角色分级方案
 
 delete from sys_role_menu where role_id in (200,201,202,203);

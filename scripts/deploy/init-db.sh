@@ -13,12 +13,12 @@ MYSQL_DATABASE="${MYSQL_DATABASE:-crypto_quiz}"
 MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-root123456}"
 
 run_mysql_query() {
-  docker compose exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -Nse "$1" "$MYSQL_DATABASE"
+  docker compose exec -T mysql mysql --default-character-set=utf8mb4 -uroot -p"$MYSQL_ROOT_PASSWORD" -Nse "$1" "$MYSQL_DATABASE"
 }
 
 run_mysql_file() {
   local file="$1"
-  docker compose exec -T mysql sh -c "mysql -uroot -p\"$MYSQL_ROOT_PASSWORD\" \"$MYSQL_DATABASE\" < \"$file\""
+  docker compose exec -T mysql sh -c "mysql --default-character-set=utf8mb4 -uroot -p\"$MYSQL_ROOT_PASSWORD\" \"$MYSQL_DATABASE\" < \"$file\""
 }
 
 main() {
