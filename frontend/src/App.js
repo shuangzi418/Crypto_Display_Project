@@ -12,6 +12,7 @@ import UserSettings from './components/UserSettings';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import Messages from './components/Messages';
+import MobileNationalSecurityChallenge from './components/MobileNationalSecurityChallenge';
 
 const { Header, Content, Footer } = Layout;
 
@@ -27,16 +28,26 @@ function AppShell() {
   const dispatch = useDispatch();
   const { isAuthenticated, user, loading } = useSelector(state => state.user);
   const location = useLocation();
+  const h5Hosts = (process.env.REACT_APP_H5_HOSTS || '')
+    .split(',')
+    .map(host => host.trim())
+    .filter(Boolean);
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isDedicatedH5Host = h5Hosts.includes(currentHost);
+  const isH5Route = location.pathname.startsWith('/h5/') || isDedicatedH5Host;
 
   // 加载用户信息
   useEffect(() => {
+    if (isH5Route) {
+      return;
+    }
+
     dispatch(loadUser());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dispatch, isH5Route]);
 
   // 自动刷新token
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isH5Route || !isAuthenticated) {
       return undefined;
     }
 
@@ -45,7 +56,7 @@ function AppShell() {
     }, 12 * 60 * 60 * 1000); // 每12小时刷新一次
 
     return () => clearInterval(refreshInterval);
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, isAuthenticated, isH5Route]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -100,6 +111,61 @@ function AppShell() {
     );
   }
 
+  const routes = (
+    <Switch>
+      {isDedicatedH5Host ? (
+        <>
+          <Route exact path="/">
+            <MobileNationalSecurityChallenge />
+          </Route>
+          <Route path="/h5/national-security-challenge">
+            <Redirect to="/" />
+          </Route>
+        </>
+      ) : (
+        <>
+          <Route path="/h5/national-security-challenge">
+            <MobileNationalSecurityChallenge />
+          </Route>
+          <Route exact path="/">
+            <HomePage />
+          </Route>
+        </>
+      )}
+      <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading}>
+        <Quiz />
+      </PrivateRoute>
+      <Route path="/ranking">
+        <Ranking />
+      </Route>
+      <Route path="/admin-login">
+        <AdminPortalEntry />
+      </Route>
+      <Route path="/admin">
+        <Redirect to="/admin-login" />
+      </Route>
+      <PublicRoute path="/login" isAuthenticated={isAuthenticated} isLoading={loading}>
+        <Login />
+      </PublicRoute>
+      <PublicRoute path="/register" isAuthenticated={isAuthenticated} isLoading={loading}>
+        <Register />
+      </PublicRoute>
+      <Route path="/forgot-password">
+        <ForgotPassword />
+      </Route>
+      <Route path="/reset-password/:token">
+        <ResetPassword />
+      </Route>
+      <PrivateRoute path="/settings" isAuthenticated={isAuthenticated} isLoading={loading}>
+        <UserSettings />
+      </PrivateRoute>
+    </Switch>
+  );
+
+  if (isH5Route) {
+    return routes;
+  }
+
   return (
     <Layout className="layout">
       <Header>
@@ -113,38 +179,7 @@ function AppShell() {
       </Header>
       <Content style={{ padding: '0 50px' }}>
         <div className="site-layout-content">
-          <Switch>
-            <Route exact path="/">
-              <HomePage />
-            </Route>
-            <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading}>
-              <Quiz />
-            </PrivateRoute>
-            <Route path="/ranking">
-              <Ranking />
-            </Route>
-            <Route path="/admin-login">
-              <AdminPortalEntry />
-            </Route>
-            <Route path="/admin">
-              <Redirect to="/admin-login" />
-            </Route>
-            <PublicRoute path="/login" isAuthenticated={isAuthenticated} isLoading={loading}>
-              <Login />
-            </PublicRoute>
-            <PublicRoute path="/register" isAuthenticated={isAuthenticated} isLoading={loading}>
-              <Register />
-            </PublicRoute>
-            <Route path="/forgot-password">
-              <ForgotPassword />
-            </Route>
-            <Route path="/reset-password/:token">
-              <ResetPassword />
-            </Route>
-            <PrivateRoute path="/settings" isAuthenticated={isAuthenticated} isLoading={loading}>
-              <UserSettings />
-            </PrivateRoute>
-          </Switch>
+          {routes}
         </div>
       </Content>
       <Footer style={{ textAlign: 'center' }}>

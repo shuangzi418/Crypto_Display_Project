@@ -144,19 +144,27 @@ prepare_env_file() {
   ensure_env_value ENABLE_HTTPS false
   ensure_env_value APP_DOMAIN ""
   ensure_env_value ADMIN_DOMAIN ""
+  ensure_env_value H5_DOMAIN ""
   ensure_env_value LETSENCRYPT_EMAIL ""
+  ensure_env_value H5_MYSQL_DATABASE crypto_quiz_h5
+  ensure_env_value H5_MYSQL_USER crypto_h5_user
+  ensure_env_value H5_DB_ADMIN_USER root
+  ensure_env_value REACT_APP_H5_HOSTS ""
   ensure_env_value FRONTEND_BIND_ADDRESS 0.0.0.0
   ensure_env_value BACKEND_BIND_ADDRESS 0.0.0.0
   ensure_env_value RUOYI_ADMIN_BIND_ADDRESS 0.0.0.0
   ensure_env_value RUOYI_UI_BIND_ADDRESS 0.0.0.0
 
-  local host_ip frontend_url admin_url scheme app_domain admin_domain
+  local host_ip frontend_url admin_url h5_url cors_origin h5_hosts scheme app_domain admin_domain h5_domain
   host_ip="$(server_ip)"
   scheme="$(public_scheme)"
   app_domain="$(current_env_value APP_DOMAIN)"
   admin_domain="$(current_env_value ADMIN_DOMAIN)"
+  h5_domain="$(current_env_value H5_DOMAIN)"
   frontend_url="${scheme}://${host_ip:-127.0.0.1}"
   admin_url="${scheme}://${host_ip:-127.0.0.1}:8081"
+  h5_url=""
+  h5_hosts=""
 
   if [[ -n "$app_domain" ]]; then
     frontend_url="${scheme}://${app_domain}"
@@ -166,14 +174,27 @@ prepare_env_file() {
     admin_url="${scheme}://${admin_domain}"
   fi
 
+  if [[ -n "$h5_domain" ]]; then
+    h5_url="${scheme}://${h5_domain}"
+    h5_hosts="$h5_domain"
+  fi
+
+  cors_origin="$frontend_url,$admin_url"
+  if [[ -n "$h5_url" ]]; then
+    cors_origin="$cors_origin,$h5_url"
+  fi
+
   ensure_secret_value JWT_SECRET replace_with_a_strong_secret change_this_jwt_secret
+  ensure_secret_value H5_JWT_SECRET replace_with_h5_jwt_secret change_this_h5_jwt_secret
   ensure_secret_value RUOYI_TOKEN_SECRET replace_with_another_strong_secret change_this_ruoyi_secret
   ensure_secret_value MYSQL_ROOT_PASSWORD root123456
   ensure_secret_value MYSQL_PASSWORD crypto_pass
+  ensure_secret_value H5_MYSQL_PASSWORD replace_with_h5_db_password crypto_h5_pass
   ensure_secret_value ADMIN_PASSWORD change_this_password change_this_admin_password
   set_env_value FRONTEND_URL "$frontend_url"
-  set_env_value CORS_ORIGIN "$frontend_url,$admin_url"
+  set_env_value CORS_ORIGIN "$cors_origin"
   set_env_value REACT_APP_ADMIN_PORTAL_URL "$admin_url"
+  set_env_value REACT_APP_H5_HOSTS "$h5_hosts"
   ensure_env_value RUOYI_API_DOCS_ENABLED false
   ensure_env_value RUOYI_SWAGGER_UI_ENABLED false
 
@@ -209,8 +230,12 @@ configure_nginx_if_needed() {
 }
 
 print_summary() {
-  local host_ip
+  local host_ip h5_summary_url
   host_ip="$(server_ip)"
+  h5_summary_url="http://${host_ip:-127.0.0.1}/h5/national-security-challenge"
+  if [[ -n "${H5_DOMAIN:-}" ]]; then
+    h5_summary_url="$(public_scheme)://${H5_DOMAIN}"
+  fi
   cat <<EOF
 
 部署完成。
@@ -219,6 +244,7 @@ print_summary() {
 Node API: http://${host_ip:-127.0.0.1}:5000/health
 RuoYi 后台: http://${host_ip:-127.0.0.1}:8081/login
 RuoYi 后端: http://${host_ip:-127.0.0.1}:8080/captchaImage
+H5 挑战: ${h5_summary_url}
 
 首次登录 RuoYi 后台请使用初始化账号 admin / admin123，并按提示立即修改密码。
 .env 已写入到: $ENV_FILE

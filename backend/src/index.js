@@ -8,7 +8,9 @@ const envPath = path.resolve(__dirname, '..', '.env');
 dotenv.config({ path: envPath });
 
 const { sequelize } = require('./models');
+const { h5Sequelize } = require('./h5/models');
 const { ensureDatabase } = require('./config/ensureDatabase');
+const { ensureH5Database } = require('./h5/config/ensureDatabase');
 const { ensureSchemaCompatibility } = require('./config/ensureSchemaCompatibility');
 const { bootstrapAdminUser } = require('./services/adminBootstrap');
 
@@ -16,6 +18,28 @@ const { bootstrapAdminUser } = require('./services/adminBootstrap');
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 const forceHttps = process.env.FORCE_HTTPS === 'true';
+const expandOriginVariants = (origin) => {
+  if (!origin) {
+    return [];
+  }
+
+  try {
+    const parsedOrigin = new URL(origin);
+    const variants = new Set();
+
+    ['http:', 'https:'].forEach((protocol) => {
+      const candidate = new URL(parsedOrigin.toString());
+      candidate.protocol = protocol;
+      variants.add(candidate.toString().replace(/\/$/, ''));
+    });
+
+    variants.add(parsedOrigin.toString().replace(/\/$/, ''));
+    return Array.from(variants);
+  } catch (error) {
+    return [origin.replace(/\/$/, '')];
+  }
+};
+
 const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
   .filter(Boolean)
   .flatMap((value) => value.split(','))
@@ -26,7 +50,7 @@ const allowedOrigins = Array.from(new Set([
   'http://127.0.0.1:3001',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  ...configuredOrigins
+  ...configuredOrigins.flatMap(expandOriginVariants)
 ]));
 
 // 在生产环境信任反向代理并强制HTTPS
@@ -47,7 +71,9 @@ app.use(cors({
       return callback(null, true);
     }
 
-    if (!origin || allowedOrigins.includes(origin)) {
+    const normalizedOrigin = origin ? origin.replace(/\/$/, '') : origin;
+
+    if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
       return callback(null, true);
     }
 
@@ -72,8 +98,11 @@ app.use((req, res, next) => {
 const ready = (async () => {
   try {
     await ensureDatabase();
+    await ensureH5Database();
     await sequelize.authenticate();
+    await h5Sequelize.authenticate();
     await sequelize.sync({ force: process.env.NODE_ENV === 'test' });
+    await h5Sequelize.sync({ force: process.env.NODE_ENV === 'test' });
     await ensureSchemaCompatibility();
     await bootstrapAdminUser();
     console.log('数据库连接成功');
@@ -99,6 +128,10 @@ app.get('/health', (req, res) => {
 const userRoutes = require('./routes/userRoutes');
 app.use('/api/users', userRoutes);
 
+// 导入 H5 用户路由
+const h5AuthRoutes = require('./routes/h5AuthRoutes');
+app.use('/api/h5-auth', h5AuthRoutes);
+
 // 导入题目路由
 const questionRoutes = require('./routes/questionRoutes');
 app.use('/api/questions', questionRoutes);
@@ -118,6 +151,10 @@ app.use('/api/users', rankingRoutes);
 // 导入消息路由
 const messageRoutes = require('./routes/messageRoutes');
 app.use('/api/messages', messageRoutes);
+
+// 导入公开挑战路由
+const publicChallengeRoutes = require('./routes/publicChallengeRoutes');
+app.use('/api/challenges', publicChallengeRoutes);
 
 app.use((error, req, res, next) => {
   if (!error) {

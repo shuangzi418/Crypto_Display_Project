@@ -51,6 +51,15 @@ services:
       DB_NAME: ${MYSQL_DATABASE:-crypto_quiz}
       DB_USER: ${MYSQL_USER:-crypto_user}
       DB_PASSWORD: ${MYSQL_PASSWORD:-crypto_pass}
+      H5_DB_DIALECT: mysql
+      H5_DB_HOST: mysql
+      H5_DB_PORT: 3306
+      H5_DB_NAME: ${H5_MYSQL_DATABASE:-crypto_quiz_h5}
+      H5_DB_USER: ${H5_MYSQL_USER:-crypto_h5_user}
+      H5_DB_PASSWORD: ${H5_MYSQL_PASSWORD:-crypto_h5_pass}
+      H5_DB_ADMIN_USER: ${H5_DB_ADMIN_USER:-root}
+      H5_DB_ADMIN_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123456}
+      H5_JWT_SECRET: ${H5_JWT_SECRET:-change_this_h5_jwt_secret}
       JWT_SECRET: ${JWT_SECRET:-change_this_jwt_secret}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
@@ -105,6 +114,7 @@ services:
       args:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_ADMIN_PORTAL_URL: ${REACT_APP_ADMIN_PORTAL_URL:-http://localhost:8081}
+        REACT_APP_H5_HOSTS: ${REACT_APP_H5_HOSTS:-}
     restart: unless-stopped
     depends_on:
       - backend

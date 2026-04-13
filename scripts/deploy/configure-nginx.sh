@@ -64,15 +64,40 @@ server {
 EOF
 }
 
+render_h5_server_block() {
+  local server_name="$1"
+  local upstream_port="$2"
+  cat <<EOF
+server {
+    listen 80;
+    server_name ${server_name};
+
+    location / {
+        proxy_pass http://127.0.0.1:${upstream_port};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+
+EOF
+}
+
 write_nginx_config() {
-  local app_server_name admin_server_name
+  local app_server_name admin_server_name h5_server_name
   app_server_name="${APP_DOMAIN:-_}"
   admin_server_name="${ADMIN_DOMAIN:-}"
+  h5_server_name="${H5_DOMAIN:-}"
 
   tmp_file="$(mktemp)"
   render_server_block "$app_server_name" "${FRONTEND_PORT:-3000}" >"$tmp_file"
   if [[ -n "$admin_server_name" ]]; then
     render_server_block "$admin_server_name" "${RUOYI_UI_PORT:-8081}" >>"$tmp_file"
+  fi
+  if [[ -n "$h5_server_name" ]]; then
+    render_h5_server_block "$h5_server_name" "${FRONTEND_PORT:-3000}" >>"$tmp_file"
   fi
 
   as_root mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
@@ -115,6 +140,9 @@ configure_https() {
   local domains=(-d "$APP_DOMAIN")
   if [[ -n "${ADMIN_DOMAIN:-}" ]]; then
     domains+=(-d "$ADMIN_DOMAIN")
+  fi
+  if [[ -n "${H5_DOMAIN:-}" ]]; then
+    domains+=(-d "$H5_DOMAIN")
   fi
 
   as_root certbot --nginx --non-interactive --agree-tos --redirect -m "$LETSENCRYPT_EMAIL" "${domains[@]}"

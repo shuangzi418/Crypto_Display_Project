@@ -9,6 +9,7 @@
     "test": "cross-env NODE_ENV=test DB_DIALECT=mysql DB_NAME=crypto_quiz_test node scripts/verifyTestDatabase.js && cross-env NODE_ENV=test DB_DIALECT=mysql DB_NAME=crypto_quiz_test jest --testPathPattern=tests/ --runInBand --detectOpenHandles --globalTeardown=./tests/teardown.js",
     "admin:init": "node scripts/initAdmin.js",
     "seed:demo": "node scripts/seedDemoData.js",
+    "seed:national-security": "node scripts/seedNationalSecurityChallenge.js",
     "sql:export": "node scripts/exportSql.js",
     "sql:import": "node scripts/importSql.js"
   },

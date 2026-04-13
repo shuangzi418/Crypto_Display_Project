@@ -57,6 +57,7 @@ CryptoQuizSystem/
 - 用户注册、登录、资料管理、密码找回与重置
 - 题目新增、编辑、删除、分类与难度管理、批量导入
 - 普通答题、竞赛参与、竞赛提交、排行榜展示
+- H5 密码安全知识挑战：手机号+用户名登录、20 题闯关、荣誉勋章与获奖记录查询
 - 管理员后台：用户管理、题目管理、竞赛管理、昵称/头像审核
 
 ## 快速启动
@@ -163,6 +164,7 @@ npm start
 默认联调地址：
 
 - 前端：`http://localhost:3001`
+- H5 挑战：`http://localhost:3001/h5/national-security-challenge`
 - 管理端（RuoYi）：`http://localhost:8081/login`
 - 后端：`http://localhost:5000`
 - 健康检查：`http://localhost:5000/health`
@@ -192,6 +194,28 @@ npm run ruoyi:stack
 - `ruoyi:admin` 会检查 `8080`，`ruoyi:ui` 会检查 `8081`，`ruoyi:stack` 会同时检查两个端口是否被占用
 - `ruoyi:admin` 与 `ruoyi:stack` 会优先检查本地 Redis；如果 `127.0.0.1:6379` 不可用且 Docker 可用，会自动拉起 `cryptoquiz-redis` 容器
 
+### 4. H5 密码安全挑战
+
+项目内置了一个独立的 H5 挑战页，适合移动端活动宣传、现场扫码答题和单独域名投放。
+
+- 默认入口：`/h5/national-security-challenge`
+- 默认题量：20 题
+- 参与方式：手机号 + 用户名登录 / 注册
+- 奖励机制：按得分发放铜牌、银牌、金牌、特别荣誉，并支持查询历史获奖记录
+
+如需准备示例题库，可执行：
+
+```bash
+cd backend
+npm run seed:national-security
+```
+
+说明：
+
+- 该脚本会把 `backend/data/passwordChallengeQuestions.json` 中的题目按标题和分类进行新增或更新
+- H5 挑战会优先从密码安全相关简单题中抽取题目；若题库不足，接口会返回缺题提示
+- 本地开发默认复用后端 `/api`，部署时也支持单独配置 H5 域名
+
 ## Docker 部署
 
 项目已提供 `docker-compose.yml`，可直接在服务器上部署前端、后端和 MySQL。
@@ -207,15 +231,19 @@ cp .env.docker.example .env
 至少修改以下配置：
 
 - `JWT_SECRET`
+- `H5_JWT_SECRET`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `MYSQL_ROOT_PASSWORD`
 - `MYSQL_PASSWORD`
+- `H5_MYSQL_PASSWORD`
 
 如果服务器已经配好域名和 HTTPS，可再把以下值改成正式地址：
 
 - `FRONTEND_URL`
 - `CORS_ORIGIN`
+- `H5_DOMAIN`
+- `REACT_APP_H5_HOSTS`
 - `COOKIE_SECURE=true`
 - `FORCE_HTTPS=true`
 
@@ -230,6 +258,7 @@ docker compose up -d --build
 启动后默认端口：
 
 - 前端：`http://服务器IP/`
+- H5 挑战：`http://服务器IP/h5/national-security-challenge`
 - 后端：`http://服务器IP:5000/health`
 - MySQL：容器内 `mysql:3306`
 
@@ -282,6 +311,7 @@ bash scripts/deploy/update.sh
 ENABLE_HOST_NGINX=true
 APP_DOMAIN=quiz.example.com
 ADMIN_DOMAIN=admin.example.com
+H5_DOMAIN=h5.example.com
 ENABLE_HTTPS=true
 LETSENCRYPT_EMAIL=ops@example.com
 ```
@@ -289,8 +319,8 @@ LETSENCRYPT_EMAIL=ops@example.com
 说明：
 
 - 开启 `ENABLE_HOST_NGINX=true` 后，安装脚本会自动把前台与后台容器改为仅监听 `127.0.0.1`
-- 宿主机 Nginx 会反向代理到普通前台和 RuoYi 后台
-- 安装脚本会自动根据 `APP_DOMAIN` / `ADMIN_DOMAIN` 生成 `FRONTEND_URL`、`CORS_ORIGIN` 和前端后台入口地址
+- 宿主机 Nginx 会反向代理到普通前台、独立 H5 域名和 RuoYi 后台
+- 安装脚本会自动根据 `APP_DOMAIN` / `ADMIN_DOMAIN` / `H5_DOMAIN` 生成 `FRONTEND_URL`、`CORS_ORIGIN`、`REACT_APP_H5_HOSTS` 和前端后台入口地址
 - 若同时设置 `ENABLE_HTTPS=true` 且域名已解析到服务器，会自动通过 Certbot 申请证书
 - 未提供域名时，脚本会跳过 HTTPS 申请，保留当前端口访问方式
 
@@ -303,6 +333,7 @@ bash scripts/deploy/check-env.sh
 部署后的默认访问地址：
 
 - 用户前台：`http://服务器IP/`
+- H5 挑战：`http://服务器IP/h5/national-security-challenge`
 - Node API：`http://服务器IP:5000/health`
 - RuoYi 后台：`http://服务器IP:8081/login`
 
@@ -421,6 +452,7 @@ cd ./backend
 npm run dev
 npm start
 npm test
+npm run seed:national-security
 npm run sql:export
 npm run sql:import
 ```
@@ -454,11 +486,13 @@ npm run sql:import
 ## 接口与认证说明
 
 - 前端通过 `frontend/src/axios.js` 统一访问 `/api`
+- H5 挑战通过 `frontend/src/h5Api.js` 访问 `/api/h5-auth` 与 `/api/challenges`
 - 登录、注册、刷新令牌成功后会同时更新 HttpOnly Cookie 与本地 `token`
 - 受保护接口优先读取 `Authorization: Bearer <token>`，并兼容 Cookie 回退
 - 刷新令牌接口 `POST /api/users/refresh-token` 现在会返回完整用户信息和新 `token`
 - 受保护页面由 `frontend/src/App.js` 中的 `PrivateRoute` / `AdminRoute` 控制，避免未授权组件先渲染再跳转
 - 密码修改接口 `PUT /api/users/profile` 需要同时提交 `currentPassword` 与新密码
+- H5 登录态使用独立的 `h5Token` Cookie，可与主站用户会话并存
 
 ## 上传仓库建议
 
