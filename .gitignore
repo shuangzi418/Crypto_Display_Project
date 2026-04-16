@@ -14,3 +14,6 @@ yarn-error.log*
 .dev-ports.json
 dev-*.log
 *.run.log
+askpass.sh
+backend/data/*.cleaned.json
+frontend/src/assets/certificate-template.jpg

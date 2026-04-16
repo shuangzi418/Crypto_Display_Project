@@ -4,6 +4,7 @@ const { protectH5User } = require('../h5/middleware/auth');
 
 const router = express.Router();
 
+router.post('/access', h5AuthController.accessH5User);
 router.post('/register', h5AuthController.registerH5User);
 router.post('/login', h5AuthController.loginH5User);
 router.get('/session', h5AuthController.getH5Session);

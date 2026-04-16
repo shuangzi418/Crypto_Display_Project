@@ -29,12 +29,11 @@ describe('H5 Authentication', () => {
     const registerRes = await agent
       .post('/api/h5-auth/register')
       .send({
-        phone: '13800000002',
         username: 'mobile-user'
       });
 
     expect(registerRes.statusCode).toBe(201);
-    expect(registerRes.body.phone).toBe('13800000002');
+    expect(registerRes.body.username).toBe('mobile-user');
 
     const profileRes = await agent
       .get('/api/h5-auth/profile');
@@ -47,12 +46,11 @@ describe('H5 Authentication', () => {
 
     expect(sessionRes.statusCode).toBe(200);
     expect(sessionRes.body.authenticated).toBe(true);
-    expect(sessionRes.body.user.phone).toBe('13800000002');
+    expect(sessionRes.body.user.username).toBe('mobile-user');
   });
 
-  test('should login with username and phone only', async () => {
+  test('should login with nickname only', async () => {
     await H5User.create({
-      phone: '13800000003',
       username: 'login-user'
     });
 
@@ -60,12 +58,37 @@ describe('H5 Authentication', () => {
     const loginRes = await agent
       .post('/api/h5-auth/login')
       .send({
-        phone: '13800000003',
         username: 'login-user'
       });
 
     expect(loginRes.statusCode).toBe(200);
     expect(loginRes.body.username).toBe('login-user');
+  });
+
+  test('should access with nickname only and reuse existing account', async () => {
+    const firstAgent = request.agent(app);
+    const firstAccessRes = await firstAgent
+      .post('/api/h5-auth/access')
+      .send({
+        username: 'quick-user'
+      });
+
+    expect(firstAccessRes.statusCode).toBe(201);
+    expect(firstAccessRes.body.username).toBe('quick-user');
+    expect(firstAccessRes.body.accessMode).toBe('register');
+    expect(await H5User.count({ where: { username: 'quick-user' } })).toBe(1);
+
+    const secondAgent = request.agent(app);
+    const secondAccessRes = await secondAgent
+      .post('/api/h5-auth/access')
+      .send({
+        username: 'quick-user'
+      });
+
+    expect(secondAccessRes.statusCode).toBe(200);
+    expect(secondAccessRes.body.username).toBe('quick-user');
+    expect(secondAccessRes.body.accessMode).toBe('login');
+    expect(await H5User.count({ where: { username: 'quick-user' } })).toBe(1);
   });
 
   test('should return unauthenticated session without 401', async () => {
@@ -78,7 +101,6 @@ describe('H5 Authentication', () => {
 
   test('should query only awarded records while logged out', async () => {
     const user = await H5User.create({
-      phone: '13800000004',
       username: 'award-user'
     });
 
@@ -103,12 +125,12 @@ describe('H5 Authentication', () => {
     const res = await request(app)
       .post('/api/h5-auth/award-records/query')
       .send({
-        phone: '13800000004',
         username: 'award-user'
       });
 
     expect(res.statusCode).toBe(200);
     expect(res.body.awards).toHaveLength(1);
-    expect(res.body.awards[0].medalTier).toBe('bronze');
+    expect(res.body.awards[0].medalTier).toBe('silver');
+    expect(res.body.awards[0].medalTitle).toBe('密码安全银奖');
   });
 });

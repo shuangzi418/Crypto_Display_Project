@@ -11,16 +11,14 @@ H5User.init({
     unique: true,
     validate: {
       notEmpty: true,
-      len: [2, 30]
+      len: [1, 30]
     }
   },
   phone: {
     type: DataTypes.STRING(20),
-    allowNull: false,
+    allowNull: true,
     unique: true,
-    validate: {
-      notEmpty: true
-    }
+    defaultValue: null
   },
   lastLoginAt: {
     type: DataTypes.DATE,

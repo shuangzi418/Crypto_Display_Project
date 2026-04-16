@@ -32,7 +32,7 @@ H5ChallengeAttempt.init({
   totalQuestions: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    defaultValue: 20
+    defaultValue: 15
   },
   medalTier: {
     type: DataTypes.STRING,

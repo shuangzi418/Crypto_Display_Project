@@ -292,10 +292,12 @@
 .mobile-h5-hero-title.ant-typography {
   margin-bottom: 12px !important;
   font-size: clamp(28px, 6vw, 42px);
-  line-height: 1.02;
+  line-height: 1.08;
   font-weight: 900;
   letter-spacing: -0.04em;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: #ffffff !important;
   text-shadow:
     0 0 24px rgba(255, 255, 255, 0.12),
@@ -497,6 +499,28 @@
 
 .mobile-h5-tab-panel {
   width: 100%;
+}
+
+.mobile-h5-auth-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.mobile-h5-account-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(0, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(6, 21, 54, 0.72);
+}
+
+.mobile-h5-account-summary .ant-typography {
+  margin-bottom: 0;
 }
 
 .mobile-h5-form .ant-form-item {

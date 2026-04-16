@@ -4,7 +4,17 @@ const { H5User, H5ChallengeAttempt } = require('../models');
 const { sanitizePlainText } = require('../../utils/sanitize');
 const { revokeH5Token, resolveH5Auth } = require('../middleware/auth');
 
-const AWARDED_MEDAL_TIERS = ['bronze', 'silver', 'gold', 'special'];
+const RAW_AWARDED_MEDAL_TIERS = ['bronze', 'silver', 'gold', 'special'];
+const DISPLAY_MEDAL_TIER_MAP = {
+  bronze: 'silver',
+  silver: 'silver',
+  gold: 'gold',
+  special: 'gold'
+};
+const DISPLAY_MEDAL_TITLE_MAP = {
+  silver: '密码安全银奖',
+  gold: '密码安全金奖'
+};
 
 const secureCookies = process.env.COOKIE_SECURE === 'true'
   || (process.env.COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production');
@@ -16,17 +26,15 @@ const authCookieOptions = (maxAge) => ({
   maxAge
 });
 
-const normalizePhone = (phone) => {
-  const digits = sanitizePlainText(phone).replace(/\D/g, '');
+const normalizeUsername = (value) => sanitizePlainText(value).trim();
 
-  if (digits.startsWith('86') && digits.length === 13) {
-    return digits.slice(2);
-  }
+const normalizeMedalTier = (tier) => DISPLAY_MEDAL_TIER_MAP[String(tier || '').trim()] || String(tier || '').trim();
 
-  return digits;
+const normalizeMedalTitle = (title, tier) => {
+  const normalizedTier = normalizeMedalTier(tier);
+
+  return DISPLAY_MEDAL_TITLE_MAP[normalizedTier] || normalizeUsername(title);
 };
-
-const isValidPhone = (phone) => /^1[3-9]\d{9}$/.test(phone);
 
 const serializeH5User = (user, token) => {
   const response = {
@@ -62,29 +70,48 @@ const buildH5AuthResponse = async (user, req, res) => {
   return serializeH5User(user, token);
 };
 
-exports.registerH5User = async (req, res) => {
-  const username = sanitizePlainText(req.body.username);
-  const phone = normalizePhone(req.body.phone || '');
+const createH5User = (username) => H5User.create({ username });
+
+exports.accessH5User = async (req, res) => {
+  const username = normalizeUsername(req.body.username);
 
   if (!username) {
-    return res.status(400).json({ message: '请输入用户名' });
-  }
-
-  if (!isValidPhone(phone)) {
-    return res.status(400).json({ message: '请输入有效的手机号' });
+    return res.status(400).json({ message: '请输入昵称' });
   }
 
   try {
     const existingUser = await H5User.findOne({
       where: {
-        phone
+        username
       }
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: '该手机号已注册，请直接登录' });
+      return res.json({
+        ...(await buildH5AuthResponse(existingUser, req, res)),
+        accessMode: 'login'
+      });
     }
 
+    const user = await createH5User(username);
+
+    res.status(201).json({
+      ...(await buildH5AuthResponse(user, req, res)),
+      accessMode: 'register'
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message || '进入挑战失败' });
+  }
+};
+
+exports.registerH5User = async (req, res) => {
+  const username = normalizeUsername(req.body.username);
+
+  if (!username) {
+    return res.status(400).json({ message: '请输入昵称' });
+  }
+
+  try {
     const existingUsername = await H5User.findOne({
       where: {
         username
@@ -92,13 +119,10 @@ exports.registerH5User = async (req, res) => {
     });
 
     if (existingUsername) {
-      return res.status(400).json({ message: '用户名已被使用，请更换后重试' });
+      return res.status(400).json({ message: '昵称已被使用，请直接登录' });
     }
 
-    const user = await H5User.create({
-      username,
-      phone
-    });
+    const user = await createH5User(username);
 
     res.status(201).json(await buildH5AuthResponse(user, req, res));
   } catch (error) {
@@ -107,23 +131,21 @@ exports.registerH5User = async (req, res) => {
 };
 
 exports.loginH5User = async (req, res) => {
-  const username = sanitizePlainText(req.body.username);
-  const phone = normalizePhone(req.body.phone || '');
+  const username = normalizeUsername(req.body.username);
 
-  if (!username || !phone) {
-    return res.status(400).json({ message: '请输入手机号和用户名' });
+  if (!username) {
+    return res.status(400).json({ message: '请输入昵称' });
   }
 
   try {
     const user = await H5User.findOne({
       where: {
-        phone,
         username
       }
     });
 
     if (!user) {
-      return res.status(401).json({ message: '手机号或用户名不匹配' });
+      return res.status(401).json({ message: '昵称不存在，请先注册' });
     }
 
     res.json(await buildH5AuthResponse(user, req, res));
@@ -150,21 +172,15 @@ exports.getH5Session = async (req, res) => {
 };
 
 exports.lookupAwardRecords = async (req, res) => {
-  const username = sanitizePlainText(req.body.username);
-  const phone = normalizePhone(req.body.phone || '');
+  const username = normalizeUsername(req.body.username);
 
-  if (!username || !phone) {
-    return res.status(400).json({ message: '请输入手机号和用户名' });
-  }
-
-  if (!isValidPhone(phone)) {
-    return res.status(400).json({ message: '请输入有效的手机号' });
+  if (!username) {
+    return res.status(400).json({ message: '请输入昵称' });
   }
 
   try {
     const user = await H5User.findOne({
       where: {
-        phone,
         username
       }
     });
@@ -172,7 +188,6 @@ exports.lookupAwardRecords = async (req, res) => {
     if (!user) {
       return res.json({
         username,
-        phone,
         awards: []
       });
     }
@@ -181,7 +196,7 @@ exports.lookupAwardRecords = async (req, res) => {
       where: {
         userId: user.id,
         medalTier: {
-          [Op.in]: AWARDED_MEDAL_TIERS
+          [Op.in]: RAW_AWARDED_MEDAL_TIERS
         }
       },
       order: [['createdAt', 'DESC'], ['id', 'DESC']]
@@ -189,12 +204,11 @@ exports.lookupAwardRecords = async (req, res) => {
 
     res.json({
       username: user.username,
-      phone: user.phone,
       awards: awards.map((award) => ({
         _id: String(award.id),
         id: award.id,
-        medalTier: award.medalTier,
-        medalTitle: award.medalTitle,
+        medalTier: normalizeMedalTier(award.medalTier),
+        medalTitle: normalizeMedalTitle(award.medalTitle, award.medalTier),
         correctCount: award.correctCount,
         answeredCount: award.answeredCount,
         totalQuestions: award.totalQuestions,

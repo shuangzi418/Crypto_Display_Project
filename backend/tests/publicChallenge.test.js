@@ -26,7 +26,7 @@ describe('H5 Password Safety Challenge', () => {
     await H5ChallengeAttempt.deleteMany({});
     await H5User.deleteMany({});
 
-    const questionPayloads = Array.from({ length: 20 }, (_, index) => ({
+    const questionPayloads = Array.from({ length: 15 }, (_, index) => ({
       title: `密码安全测试题 ${index + 1}`,
       content: `密码安全基础知识单选题 ${index + 1} 的正确说法是什么？`,
       options: ['正确选项', '错误选项一', '错误选项二', '错误选项三'],
@@ -54,7 +54,6 @@ describe('H5 Password Safety Challenge', () => {
     const registerRes = await agent
       .post('/api/h5-auth/register')
       .send({
-        phone: '13800000001',
         username: 'challenge-user'
       });
 
@@ -65,13 +64,13 @@ describe('H5 Password Safety Challenge', () => {
 
     expect(loadRes.statusCode).toBe(200);
     expect(loadRes.body.ready).toBe(true);
-    expect(loadRes.body.questions).toHaveLength(20);
+    expect(loadRes.body.questions).toHaveLength(15);
     expect(loadRes.body.questions[0].correctAnswer).toBeUndefined();
 
     const answers = {};
 
     loadRes.body.questions.forEach((question, index) => {
-      answers[question._id] = index < 17 ? 0 : 1;
+      answers[question._id] = index < 12 ? 0 : 1;
     });
 
     const submitRes = await agent
@@ -82,11 +81,11 @@ describe('H5 Password Safety Challenge', () => {
       });
 
     expect(submitRes.statusCode).toBe(200);
-    expect(submitRes.body.correctCount).toBe(17);
-    expect(submitRes.body.medal.tier).toBe('silver');
+    expect(submitRes.body.correctCount).toBe(12);
+    expect(submitRes.body.medal.tier).toBe('gold');
 
     const attempts = await H5ChallengeAttempt.findAll();
     expect(attempts).toHaveLength(1);
-    expect(attempts[0].medalTier).toBe('silver');
+    expect(attempts[0].medalTier).toBe('gold');
   });
 });

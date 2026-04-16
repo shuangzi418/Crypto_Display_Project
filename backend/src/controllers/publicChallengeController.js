@@ -4,48 +4,34 @@ const { Question } = require('../models');
 const { H5ChallengeAttempt } = require('../h5/models');
 const { serializeQuestions } = require('../utils/questionSerializer');
 
-const CHALLENGE_SIZE = 20;
+const CHALLENGE_SIZE = 15;
 const CHALLENGE_TITLE = '密码安全知识挑战';
-const CHALLENGE_DESCRIPTION = '页面将从系统题库中抽取 20 道密码安全知识题，支持逐题翻页作答，完成后自动颁发荣誉勋章。';
+const CHALLENGE_DESCRIPTION = '页面将从系统题库中抽取 15 道密码安全知识题，支持逐题翻页作答，完成后自动颁发荣誉勋章。';
 const CHALLENGE_FOOTER = '筑牢密码安全防线，你我皆是主角 | 学习密码知识，赢取荣誉勋章';
 const CHALLENGE_TOKEN_TYPE = 'password-safety-challenge';
 const PRIMARY_KEYWORDS = ['密码', '商用密码', '密码法', '验证码', '口令'];
 const SECONDARY_KEYWORDS = ['认证', '签名', '保密', '安全', '破解'];
 const MEDAL_RULES = [
   {
-    tier: 'special',
-    minCorrect: 20,
-    badge: '特别荣誉',
-    title: '密码安全之星',
-    description: '20 题全部答对，解锁密码安全特别荣誉。'
-  },
-  {
     tier: 'gold',
-    minCorrect: 19,
-    badge: '金牌',
-    title: '安全榜样·金徽',
-    description: '答对 19 题，荣获金徽荣誉。'
+    minCorrect: 12,
+    badge: '金奖',
+    title: '密码安全金奖',
+    description: '答对 12 题及以上，荣获密码安全金奖。'
   },
   {
     tier: 'silver',
-    minCorrect: 17,
-    badge: '银牌',
-    title: '密码先锋·银徽',
-    description: '答对 17 题，荣获银徽荣誉。'
-  },
-  {
-    tier: 'bronze',
-    minCorrect: 15,
-    badge: '铜牌',
-    title: '安全卫士·铜徽',
-    description: '答对 15 题，荣获铜徽荣誉。'
+    minCorrect: 10,
+    badge: '银奖',
+    title: '密码安全银奖',
+    description: '答对 10 题及以上，荣获密码安全银奖。'
   },
   {
     tier: 'encourage',
     minCorrect: 0,
-    badge: '继续学习',
+    badge: '未获奖',
     title: '继续加油',
-    description: '再学习一点密码安全知识，下一次就能冲击勋章。'
+    description: '答对 10 题可获银奖，答对 12 题可获金奖。'
   }
 ];
 
@@ -163,7 +149,7 @@ exports.getNationalSecurityChallenge = async (req, res) => {
         : `当前题库中仅匹配到 ${questions.length} 道相关题目，请先在后台补充密码安全知识简单题。`,
       challengeToken: ready ? signChallengeToken(questionIds) : null,
       questions: serializeQuestions(questions),
-      medalRules: MEDAL_RULES.map((rule) => ({
+      medalRules: MEDAL_RULES.filter((rule) => rule.minCorrect > 0).map((rule) => ({
         tier: rule.tier,
         minCorrect: rule.minCorrect,
         badge: rule.badge,

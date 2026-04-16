@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('./database');
+const h5Sequelize = require('../h5/config/database');
 
 const ensureAvatarColumn = async (queryInterface) => {
   const userTable = await queryInterface.describeTable('users');
@@ -34,11 +35,32 @@ const ensureSubmissionCompetitionColumn = async (queryInterface) => {
   });
 };
 
+const ensureH5UserPhoneColumn = async (queryInterface) => {
+  const h5UserTable = await queryInterface.describeTable('h5_users');
+
+  if (!h5UserTable.phone) {
+    return;
+  }
+
+  if (h5UserTable.phone.allowNull) {
+    return;
+  }
+
+  await queryInterface.changeColumn('h5_users', 'phone', {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    unique: true,
+    defaultValue: null
+  });
+};
+
 const ensureSchemaCompatibility = async () => {
   const queryInterface = sequelize.getQueryInterface();
+  const h5QueryInterface = h5Sequelize.getQueryInterface();
 
   await ensureAvatarColumn(queryInterface);
   await ensureSubmissionCompetitionColumn(queryInterface);
+  await ensureH5UserPhoneColumn(h5QueryInterface);
 };
 
 module.exports = {
