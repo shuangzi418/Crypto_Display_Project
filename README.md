@@ -10,6 +10,40 @@
 - 管理能力：集成 RuoYi 管理端，支持题目、竞赛、业务用户、昵称和头像审核等后台操作
 - 部署友好：提供 Docker Compose、HTTPS 反代说明和自动化脚本，便于服务器快速上线
 
+## 快速体验
+
+- Web 端：访问 `http://localhost:3001`，体验普通答题、竞赛、排行榜与个人设置
+- H5 挑战页：访问 `http://localhost:3001/h5/national-security-challenge`，输入昵称即可一键进入挑战
+- 管理后台：访问 `http://localhost:8081/login`，进入题库、竞赛与业务数据管理界面
+- Docker 部署：在项目根目录执行 `docker compose up -d --build` 可快速拉起前后端和数据库
+
+## 系统架构
+
+```text
+Users / Mobile H5 / Admin
+        |
+        v
+React Frontend + H5 Pages
+        |
+        v
+Express API Service
+        |
+        +--> MySQL (users, questions, competitions, H5 records)
+        |
+        +--> RuoYi Admin Modules
+```
+
+## 界面预览
+
+当前仓库未附带活动现场截图，建议后续将公开展示截图放入 `docs/screenshots/`，可按下面结构补充：
+
+| 建议文件 | 展示内容 |
+| --- | --- |
+| `docs/screenshots/web-home.png` | Web 端首页或答题首页 |
+| `docs/screenshots/web-quiz.png` | 普通答题或竞赛答题页面 |
+| `docs/screenshots/h5-challenge.png` | H5 密码安全挑战页 |
+| `docs/screenshots/admin-dashboard.png` | 管理后台总览或题库管理页 |
+
 ## 技术栈
 
 ### Frontend
