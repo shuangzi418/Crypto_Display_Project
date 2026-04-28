@@ -35,6 +35,20 @@ const ensureSubmissionCompetitionColumn = async (queryInterface) => {
   });
 };
 
+const ensureQuestionExplanationColumn = async (queryInterface) => {
+  const questionTable = await queryInterface.describeTable('questions');
+
+  if (questionTable.explanation) {
+    return;
+  }
+
+  await queryInterface.addColumn('questions', 'explanation', {
+    type: DataTypes.TEXT('long'),
+    allowNull: true,
+    defaultValue: null
+  });
+};
+
 const ensureH5UserPhoneColumn = async (queryInterface) => {
   const h5UserTable = await queryInterface.describeTable('h5_users');
 
@@ -60,6 +74,7 @@ const ensureSchemaCompatibility = async () => {
 
   await ensureAvatarColumn(queryInterface);
   await ensureSubmissionCompetitionColumn(queryInterface);
+  await ensureQuestionExplanationColumn(queryInterface);
   await ensureH5UserPhoneColumn(h5QueryInterface);
 };
 

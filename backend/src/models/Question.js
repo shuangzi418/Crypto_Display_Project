@@ -13,6 +13,10 @@ Question.init({
     type: DataTypes.TEXT,
     allowNull: false
   },
+  explanation: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true
+  },
   options: {
     type: DataTypes.TEXT('long'),
     allowNull: false,

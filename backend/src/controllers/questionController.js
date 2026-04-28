@@ -200,8 +200,8 @@ exports.previewImportQuestionsFromFile = async (req, res) => {
 
 exports.getQuestions = async (req, res) => {
   const filters = buildListFilters(req.query);
-  const includeCorrectAnswer = req.user && req.user.role === 'admin';
-  const defaultLimit = req.user && req.user.role === 'admin' ? 100 : 10;
+  const includeAdminFields = req.user && req.user.role === 'admin';
+  const defaultLimit = includeAdminFields ? 100 : 10;
   const parsedLimit = Number(req.query.limit);
   const limit = Number.isInteger(parsedLimit)
     ? Math.max(1, Math.min(parsedLimit, 100))
@@ -214,7 +214,10 @@ exports.getQuestions = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    res.json(serializeQuestions(questions, { includeCorrectAnswer }));
+    res.json(serializeQuestions(questions, {
+      includeCorrectAnswer: includeAdminFields,
+      includeExplanation: includeAdminFields
+    }));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -229,7 +232,8 @@ exports.getQuestionById = async (req, res) => {
     }
 
     res.json(serializeQuestion(question, {
-      includeCorrectAnswer: req.user && req.user.role === 'admin'
+      includeCorrectAnswer: req.user && req.user.role === 'admin',
+      includeExplanation: req.user && req.user.role === 'admin'
     }));
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -251,6 +255,7 @@ exports.updateQuestion = async (req, res) => {
     const payload = normalizeQuestionPayload({
       title: req.body.title !== undefined ? req.body.title : question.title,
       content: req.body.content !== undefined ? req.body.content : question.content,
+      explanation: req.body.explanation !== undefined ? req.body.explanation : question.explanation,
       options: req.body.options !== undefined ? req.body.options : question.options,
       correctAnswer: req.body.correctAnswer !== undefined ? req.body.correctAnswer : question.correctAnswer,
       difficulty: req.body.difficulty !== undefined ? req.body.difficulty : question.difficulty,

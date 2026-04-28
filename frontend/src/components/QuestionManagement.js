@@ -189,6 +189,7 @@ const QuestionManagement = () => {
     form.setFieldsValue({
       title: question.title,
       content: question.content,
+      explanation: question.explanation,
       options: Array.isArray(question.options) ? question.options.join('\n') : '',
       correctAnswer: question.correctAnswer,
       difficulty: question.difficulty,
@@ -201,11 +202,12 @@ const QuestionManagement = () => {
   const handleSaveQuestion = async (values) => {
     try {
       setLoading(true);
-      const { title, content, options, correctAnswer, difficulty, category, points } = values;
+      const { title, content, explanation, options, correctAnswer, difficulty, category, points } = values;
 
       const questionData = {
         title,
         content,
+        explanation,
         options: options.split('\n').filter((opt) => opt.trim() !== ''),
         correctAnswer: parseInt(correctAnswer, 10),
         difficulty,
@@ -616,6 +618,13 @@ D: 分组加密
             rules={[{ required: true, message: '请输入题目内容' }]}
           >
             <TextArea rows={4} placeholder="请输入题目内容" />
+          </Form.Item>
+
+          <Form.Item
+            label="题目解析"
+            name="explanation"
+          >
+            <TextArea rows={4} placeholder="请输入题目解析，便于答题后展示学习说明" />
           </Form.Item>
 
           <Form.Item

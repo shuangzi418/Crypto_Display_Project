@@ -1,6 +1,7 @@
 const path = require('path');
 const dotenv = require('dotenv');
 const passwordChallengeQuestions = require('../data/passwordChallengeQuestions.json');
+const passwordChallengeExplanations = require('../data/passwordChallengeExplanations.json');
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
@@ -10,6 +11,7 @@ const { ensureSchemaCompatibility } = require('../src/config/ensureSchemaCompati
 
 const passwordChallengeQuestionBank = passwordChallengeQuestions.map((question) => ({
   ...question,
+  explanation: question.explanation || passwordChallengeExplanations[question.title] || null,
   difficulty: question.difficulty || 'easy',
   category: question.category || '密码安全',
   points: question.points || 5

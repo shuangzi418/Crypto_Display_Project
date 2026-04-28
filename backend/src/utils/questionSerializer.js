@@ -11,7 +11,10 @@ const toPlainObject = (value) => {
 };
 
 const serializeQuestion = (question, options = {}) => {
-  const { includeCorrectAnswer = false } = options;
+  const {
+    includeCorrectAnswer = false,
+    includeExplanation = false
+  } = options;
   const plainQuestion = toPlainObject(question);
 
   if (!plainQuestion) {
@@ -22,6 +25,10 @@ const serializeQuestion = (question, options = {}) => {
     delete plainQuestion.correctAnswer;
   }
 
+  if (!includeExplanation) {
+    delete plainQuestion.explanation;
+  }
+
   return plainQuestion;
 };
 
@@ -30,7 +37,10 @@ const serializeQuestions = (questions, options = {}) => {
 };
 
 const serializeSubmission = (submission, options = {}) => {
-  const { includeQuestionCorrectAnswer = false } = options;
+  const {
+    includeQuestionCorrectAnswer = false,
+    includeQuestionExplanation = false
+  } = options;
   const plainSubmission = toPlainObject(submission);
 
   if (!plainSubmission) {
@@ -39,7 +49,8 @@ const serializeSubmission = (submission, options = {}) => {
 
   if (plainSubmission.question) {
     plainSubmission.question = serializeQuestion(plainSubmission.question, {
-      includeCorrectAnswer: includeQuestionCorrectAnswer
+      includeCorrectAnswer: includeQuestionCorrectAnswer,
+      includeExplanation: includeQuestionExplanation
     });
   }
 

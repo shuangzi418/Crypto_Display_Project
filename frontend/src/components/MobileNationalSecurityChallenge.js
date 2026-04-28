@@ -62,6 +62,16 @@ const getErrorMessage = (error, fallbackMessage) => {
   return error?.response?.data?.message || error?.message || fallbackMessage;
 };
 
+const getOptionLabel = (optionIndex) => OPTION_LABELS[optionIndex] || optionIndex + 1;
+
+const getReviewAnswerText = (optionIndex, options = []) => {
+  if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= options.length) {
+    return '未作答';
+  }
+
+  return `${getOptionLabel(optionIndex)}. ${options[optionIndex]}`;
+};
+
 const formatAwardTime = (value) => {
   if (!value) {
     return '';
@@ -352,6 +362,67 @@ function MobileNationalSecurityChallenge() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const renderResultReview = () => {
+    if (!result?.review?.length) {
+      return null;
+    }
+
+    return (
+      <Card bordered={false} className="mobile-h5-card mobile-h5-card--review">
+        <Space direction="vertical" size={16} className="mobile-h5-block">
+          {renderSectionHeader(
+            'ANSWER REVIEW',
+            '答题答案与解析',
+            '答题完成后可立即查看每道题的标准答案和解析，帮助参与者边答边学、加深记忆。'
+          )}
+
+          <div className="mobile-h5-review-list">
+            {result.review.map((item, index) => {
+              const answerStatusText = item.isCorrect ? '回答正确' : (Number.isInteger(item.selectedAnswer) ? '回答错误' : '未作答');
+              const answerStatusClassName = item.isCorrect
+                ? 'mobile-h5-review-status--correct'
+                : (Number.isInteger(item.selectedAnswer)
+                  ? 'mobile-h5-review-status--wrong'
+                  : 'mobile-h5-review-status--empty');
+
+              return (
+                <article key={item.questionId || index} className="mobile-h5-review-item">
+                  <div className="mobile-h5-review-head">
+                    <span className="mobile-h5-review-index">第 {index + 1} 题</span>
+                    <span className={`mobile-h5-review-status ${answerStatusClassName}`}>{answerStatusText}</span>
+                  </div>
+
+                  <Space direction="vertical" size={10} className="mobile-h5-block">
+                    <Title level={5} className="mobile-h5-title mobile-h5-title--compact">{item.title || item.content}</Title>
+                    {item.title && item.title !== item.content && (
+                      <Paragraph className="mobile-h5-question-content">{item.content}</Paragraph>
+                    )}
+
+                    <div className="mobile-h5-review-answer-grid">
+                      <div className="mobile-h5-review-answer-card">
+                        <Text type="secondary">你的答案</Text>
+                        <strong>{getReviewAnswerText(item.selectedAnswer, item.options)}</strong>
+                      </div>
+                      <div className="mobile-h5-review-answer-card mobile-h5-review-answer-card--correct">
+                        <Text type="secondary">标准答案</Text>
+                        <strong>{getReviewAnswerText(item.correctAnswer, item.options)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="mobile-h5-review-explanation">
+                      <Text strong>解析</Text>
+                      <Paragraph className="mobile-h5-paragraph">{item.explanation}</Paragraph>
+                    </div>
+                  </Space>
+                </article>
+              );
+            })}
+          </div>
+        </Space>
+      </Card>
+    );
   };
 
   const renderAuthPanel = () => {
@@ -731,6 +802,8 @@ function MobileNationalSecurityChallenge() {
             </Button>
           </Card>
 
+          {renderResultReview()}
+
           {certificateError && <Alert message={certificateError} type="error" showIcon className="mobile-h5-alert" />}
           {hasAward && (
             <Card bordered={false} className="mobile-h5-card mobile-h5-card--center">
@@ -807,12 +880,12 @@ function MobileNationalSecurityChallenge() {
                     key={`${currentQuestion._id}-${optionIndex}`}
                     type="button"
                     className={`mobile-h5-option ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => handleSelectOption(currentQuestion._id, optionIndex)}
-                  >
-                    <span className="mobile-h5-option-key">{OPTION_LABELS[optionIndex] || optionIndex + 1}</span>
-                    <span className="mobile-h5-option-text">{option}</span>
-                  </button>
-                );
+                     onClick={() => handleSelectOption(currentQuestion._id, optionIndex)}
+                   >
+                     <span className="mobile-h5-option-key">{getOptionLabel(optionIndex)}</span>
+                     <span className="mobile-h5-option-text">{option}</span>
+                   </button>
+                 );
               })}
             </div>
           </Card>

@@ -29,6 +29,7 @@ describe('H5 Password Safety Challenge', () => {
     const questionPayloads = Array.from({ length: 15 }, (_, index) => ({
       title: `密码安全测试题 ${index + 1}`,
       content: `密码安全基础知识单选题 ${index + 1} 的正确说法是什么？`,
+      explanation: `这是第 ${index + 1} 题的解析。`,
       options: ['正确选项', '错误选项一', '错误选项二', '错误选项三'],
       correctAnswer: 0,
       difficulty: 'easy',
@@ -83,6 +84,13 @@ describe('H5 Password Safety Challenge', () => {
     expect(submitRes.statusCode).toBe(200);
     expect(submitRes.body.correctCount).toBe(12);
     expect(submitRes.body.medal.tier).toBe('gold');
+    expect(submitRes.body.review).toHaveLength(15);
+    expect(submitRes.body.review[0]).toMatchObject({
+      selectedAnswer: 0,
+      correctAnswer: 0,
+      isCorrect: true,
+      explanation: '这是第 1 题的解析。'
+    });
 
     const attempts = await H5ChallengeAttempt.findAll();
     expect(attempts).toHaveLength(1);

@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { Question } = require('../models');
 const { H5ChallengeAttempt } = require('../h5/models');
 const { serializeQuestions } = require('../utils/questionSerializer');
+const questionExplanations = require('../../data/passwordChallengeExplanations.json');
 
 const CHALLENGE_SIZE = 15;
 const CHALLENGE_TITLE = '密码安全知识挑战';
@@ -132,6 +133,14 @@ const getMedalResult = (correctCount) => {
   return MEDAL_RULES.find((rule) => correctCount >= rule.minCorrect) || MEDAL_RULES[MEDAL_RULES.length - 1];
 };
 
+const getQuestionExplanation = (question) => {
+  const normalizedTitle = String(question?.title || '').trim();
+
+  return question?.explanation
+    || questionExplanations[normalizedTitle]
+    || '建议结合标准答案回顾本题所涉及的密码安全知识点，进一步理解正确做法和风险边界。';
+};
+
 exports.getNationalSecurityChallenge = async (req, res) => {
   try {
     const questions = await loadChallengeQuestions();
@@ -204,25 +213,50 @@ exports.submitNationalSecurityChallenge = async (req, res) => {
     const questionMap = new Map(questions.map((question) => [String(question.id), question]));
     let correctCount = 0;
     let answeredCount = 0;
+    const review = [];
 
     questionIds.forEach((questionId) => {
+      const question = questionMap.get(questionId);
       const rawAnswer = answers[questionId];
+      let selectedAnswer = null;
+      let isCorrect = false;
 
       if (rawAnswer === undefined || rawAnswer === null || rawAnswer === '') {
+        review.push({
+          questionId,
+          title: question.title,
+          content: question.content,
+          options: question.options,
+          selectedAnswer,
+          correctAnswer: question.correctAnswer,
+          isCorrect,
+          explanation: getQuestionExplanation(question)
+        });
         return;
       }
 
       const normalizedAnswer = Number(rawAnswer);
 
-      if (!Number.isInteger(normalizedAnswer)) {
-        return;
+      if (Number.isInteger(normalizedAnswer)) {
+        selectedAnswer = normalizedAnswer;
+        answeredCount += 1;
+        isCorrect = question.correctAnswer === normalizedAnswer;
+
+        if (isCorrect) {
+          correctCount += 1;
+        }
       }
 
-      answeredCount += 1;
-
-      if (questionMap.get(questionId).correctAnswer === normalizedAnswer) {
-        correctCount += 1;
-      }
+      review.push({
+        questionId,
+        title: question.title,
+        content: question.content,
+        options: question.options,
+        selectedAnswer,
+        correctAnswer: question.correctAnswer,
+        isCorrect,
+        explanation: getQuestionExplanation(question)
+      });
     });
 
     const totalQuestions = questionIds.length;
@@ -251,6 +285,7 @@ exports.submitNationalSecurityChallenge = async (req, res) => {
       unansweredCount,
       wrongCount,
       totalQuestions,
+      review,
       medal,
       submittedAt: new Date().toISOString()
     });
