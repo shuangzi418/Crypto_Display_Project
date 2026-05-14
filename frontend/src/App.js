@@ -35,15 +35,16 @@ function AppShell() {
   const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
   const isDedicatedH5Host = h5Hosts.includes(currentHost);
   const isH5Route = location.pathname.startsWith('/h5/') || isDedicatedH5Host;
+  const hasStoredToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('token'));
 
   // 加载用户信息
   useEffect(() => {
-    if (isH5Route) {
+    if (isH5Route || !hasStoredToken) {
       return;
     }
 
     dispatch(loadUser());
-  }, [dispatch, isH5Route]);
+  }, [dispatch, hasStoredToken, isH5Route]);
 
   // 自动刷新token
   useEffect(() => {
