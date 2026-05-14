@@ -145,3 +145,4 @@ bash scripts/deploy/update.sh
 ## 自动部署验证记录
 
 - 2026-05-15 01:10 CST：首次启用 `cryptoquiz-auto-redeploy.timer` 并进行 docs-only 链路验证。
+- 2026-05-15 01:28 CST：第二阶段优化启用后，开始验证 docs-only 更新不会触发容器重建。
