@@ -14,11 +14,28 @@
 - 保留现有 `scripts/deploy/update.sh` 作为人工更新/回滚入口
 - 自动部署不直接运行 `install.sh`
 - 自动部署只在检测到 `origin/main` 更新时执行
-- 自动部署只做：
-  - `git pull --ff-only`
-  - `docker compose up -d --build`
-  - `scripts/deploy/init-db.sh`
-  - `scripts/deploy/healthcheck.sh`
+- 自动部署默认按变更路径定向执行，尽量避免无意义的全量重建
+
+## 路径到服务的映射策略
+
+- `frontend/**` → 重建 `frontend`
+- `backend/**` → 重建 `backend`，并执行 `init-db.sh`
+- `admin/ruoyi-vue/ruoyi-ui/**` → 重建 `ruoyi-ui`
+- `admin/ruoyi-vue/**`（不含 `ruoyi-ui`）→ 重建 `ruoyi-admin`，并执行 `init-db.sh`
+- `admin/ruoyi-vue/sql/**` → 不重建服务，但执行 `init-db.sh`
+- `docker-compose.yml`、`scripts/deploy/init-db.sh`、`scripts/deploy/healthcheck.sh`、`scripts/deploy/install.sh`、`scripts/deploy/update.sh` → 全量重建
+- `docs/**`、`README.md`、`scripts/deploy/systemd/**` → 只拉取源码，不触发运行时重建
+
+## 自动部署实际执行内容
+
+wrapper 会根据变更路径做以下动作之一：
+
+- 只 `git pull --ff-only`，不触发重建
+- 定向执行 `docker compose up -d --build <services...>`
+- 执行 `scripts/deploy/init-db.sh`
+- 执行 `scripts/deploy/healthcheck.sh`
+
+它不会在 timer 路径里重新安装 Docker，也不会重新配置宿主机 Nginx。
 
 ## 仓库内文件
 
@@ -122,6 +139,8 @@ bash scripts/deploy/update.sh
 - 如果工作区不干净，wrapper 会主动退出，避免覆盖本地修改
 - 如果后续需要秒级触发，再考虑 webhook / GitHub Actions SSH 触发
 - 如果后续出现多台服务器或本地构建过慢，再考虑镜像仓库方案
+- 当前默认轮询频率是 `10min`，比 `5min` 更保守，能减少无意义重建和日志噪音
+- 运行日志默认进入 `journald`，推荐通过 `journalctl -u cryptoquiz-auto-redeploy.service` 查看
 
 ## 自动部署验证记录
 

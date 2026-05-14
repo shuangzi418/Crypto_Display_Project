@@ -12,6 +12,10 @@ ExecStart=/usr/bin/env bash __REPO_ROOT__/scripts/deploy/auto-redeploy.sh
 TimeoutStartSec=1h
 NoNewPrivileges=true
 PrivateTmp=true
+SyslogIdentifier=cryptoquiz-auto-redeploy
+StandardOutput=journal
+StandardError=journal
+Nice=10
 
 [Install]
 WantedBy=multi-user.target
