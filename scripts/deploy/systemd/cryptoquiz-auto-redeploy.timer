@@ -1,0 +1,12 @@
+[Unit]
+Description=Run CryptoQuiz automatic redeploy periodically
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=cryptoquiz-auto-redeploy.service
+
+[Install]
+WantedBy=timers.target
