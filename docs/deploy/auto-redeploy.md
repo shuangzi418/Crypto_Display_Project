@@ -122,3 +122,7 @@ bash scripts/deploy/update.sh
 - 如果工作区不干净，wrapper 会主动退出，避免覆盖本地修改
 - 如果后续需要秒级触发，再考虑 webhook / GitHub Actions SSH 触发
 - 如果后续出现多台服务器或本地构建过慢，再考虑镜像仓库方案
+
+## 自动部署验证记录
+
+- 2026-05-15 01:10 CST：首次启用 `cryptoquiz-auto-redeploy.timer` 并进行 docs-only 链路验证。
