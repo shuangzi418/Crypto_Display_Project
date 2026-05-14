@@ -59,7 +59,7 @@ create_fixture() {
     cat > deploy-stub.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'deploy\n' >> .auto-deploy.log
+printf 'scope=%s;services=%s;initdb=%s;healthcheck=%s\n' "${AUTO_REDEPLOY_DEPLOY_SCOPE:-}" "${AUTO_REDEPLOY_SERVICES:-}" "${AUTO_REDEPLOY_RUN_INIT_DB:-}" "${AUTO_REDEPLOY_RUN_HEALTHCHECK:-}" >> .auto-deploy.log
 EOF
     chmod +x deploy-stub.sh
     cat > deploy-hold.sh <<'EOF'
@@ -100,11 +100,13 @@ EOF
 advance_upstream() {
   local author_dir="$1"
   local message="$2"
+  local file_path="${3:-CHANGELOG.md}"
 
   (
     cd "$author_dir"
-    printf '%s\n' "$message" >> CHANGELOG.md
-    git add CHANGELOG.md
+    mkdir -p "$(dirname "$file_path")"
+    printf '%s\n' "$message" >> "$file_path"
+    git add "$file_path"
     git commit -m "$message" >/dev/null 2>&1
     git push >/dev/null 2>&1
   )
@@ -129,14 +131,30 @@ test_upstream_change_redeploys_once() {
   local work_dir="${fixture[1]}"
   local author_dir="${fixture[2]}"
 
-  advance_upstream "$author_dir" 'advance upstream once'
+  advance_upstream "$author_dir" 'advance frontend once' 'frontend/src/App.js'
 
   AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-stub.sh' bash "$WRAPPER"
 
   assert_file_exists "$work_dir/.auto-deploy.log" 'Deploy log should exist after upstream change'
-  assert_eq 'deploy' "$(tr -d '\r' < "$work_dir/.auto-deploy.log" | head -n 1)" 'Deploy command should run exactly once'
+  assert_eq 'scope=services;services=frontend;initdb=false;healthcheck=true' "$(tr -d '\r' < "$work_dir/.auto-deploy.log" | head -n 1)" 'Frontend-only change should target frontend service only'
   assert_eq "$(git -C "$work_dir" rev-parse HEAD)" "$(git -C "$work_dir" rev-parse origin/main)" 'Worktree should fast-forward to origin/main'
   record_pass 'upstream change triggers single redeploy'
+}
+
+test_docs_only_change_skips_runtime_redeploy() {
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  mapfile -t fixture < <(create_fixture "$tmp_dir")
+  local work_dir="${fixture[1]}"
+  local author_dir="${fixture[2]}"
+
+  advance_upstream "$author_dir" 'advance docs only once' 'docs/deploy/auto-redeploy.md'
+
+  AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-stub.sh' bash "$WRAPPER"
+
+  assert_eq "$(git -C "$work_dir" rev-parse HEAD)" "$(git -C "$work_dir" rev-parse origin/main)" 'Docs-only update should still fast-forward local HEAD'
+  assert_file_missing "$work_dir/.auto-deploy.log" 'Docs-only update must not trigger runtime deploy command'
+  record_pass 'docs-only change skips runtime redeploy'
 }
 
 test_dirty_worktree_aborts() {
@@ -163,7 +181,7 @@ test_check_only_is_read_only() {
   local work_dir="${fixture[1]}"
   local author_dir="${fixture[2]}"
 
-  advance_upstream "$author_dir" 'advance upstream for check only'
+  advance_upstream "$author_dir" 'advance upstream for check only' 'frontend/src/App.js'
   local before_head
   before_head="$(git -C "$work_dir" rev-parse HEAD)"
 
@@ -183,7 +201,7 @@ test_force_runs_without_upstream_change() {
   AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-stub.sh' bash "$WRAPPER" --force >/dev/null
 
   assert_file_exists "$work_dir/.auto-deploy.log" 'Force mode should run deploy command even without upstream change'
-  assert_eq 'deploy' "$(tr -d '\r' < "$work_dir/.auto-deploy.log" | head -n 1)" 'Force mode should invoke deploy command'
+  assert_eq 'scope=full;services=;initdb=true;healthcheck=true' "$(tr -d '\r' < "$work_dir/.auto-deploy.log" | head -n 1)" 'Force mode should trigger full deploy when no path-based runtime change exists'
   record_pass 'force mode triggers redeploy'
 }
 
@@ -212,6 +230,7 @@ test_concurrent_second_run_exits_cleanly() {
 main() {
   test_no_upstream_change
   test_upstream_change_redeploys_once
+  test_docs_only_change_skips_runtime_redeploy
   test_dirty_worktree_aborts
   test_check_only_is_read_only
   test_force_runs_without_upstream_change
