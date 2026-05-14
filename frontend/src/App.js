@@ -113,25 +113,12 @@ function AppShell() {
 
   const routes = (
     <Switch>
-      {isDedicatedH5Host ? (
-        <>
-          <Route exact path="/">
-            <MobileNationalSecurityChallenge />
-          </Route>
-          <Route path="/h5/national-security-challenge">
-            <Redirect to="/" />
-          </Route>
-        </>
-      ) : (
-        <>
-          <Route path="/h5/national-security-challenge">
-            <MobileNationalSecurityChallenge />
-          </Route>
-          <Route exact path="/">
-            <HomePage />
-          </Route>
-        </>
-      )}
+      <Route path="/h5/national-security-challenge">
+        {isDedicatedH5Host ? <Redirect to="/" /> : <MobileNationalSecurityChallenge />}
+      </Route>
+      <Route exact path="/">
+        {isDedicatedH5Host ? <MobileNationalSecurityChallenge /> : <HomePage />}
+      </Route>
       <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading}>
         <Quiz />
       </PrivateRoute>
