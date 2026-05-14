@@ -37,6 +37,7 @@ function AppShell() {
   const isDedicatedH5Host = h5Hosts.includes(currentHost);
   const isH5Route = location.pathname.startsWith('/h5/') || isDedicatedH5Host;
   const hasStoredToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('token'));
+  // auto-redeploy frontend-only smoke marker round 2
 
   // 加载用户信息
   useEffect(() => {
