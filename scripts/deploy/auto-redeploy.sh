@@ -214,7 +214,7 @@ run_default_deploy() {
       ;;
     services)
       log "Rebuilding and restarting services: ${SERVICES[*]}"
-      docker compose up -d --build "${SERVICES[@]}"
+      docker compose up -d --no-deps --build "${SERVICES[@]}"
       ;;
     maintenance|none)
       log 'Skipping compose rebuild for this update'
