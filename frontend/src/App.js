@@ -32,6 +32,7 @@ function AppShell() {
     .split(',')
     .map(host => host.trim())
     .filter(Boolean);
+  // auto-redeploy frontend-only smoke marker
   const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
   const isDedicatedH5Host = h5Hosts.includes(currentHost);
   const isH5Route = location.pathname.startsWith('/h5/') || isDedicatedH5Host;
