@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="${AUTO_REDEPLOY_ROOT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 LOCK_DIR="${AUTO_REDEPLOY_LOCK_DIR:-$ROOT_DIR/.deploy/auto-redeploy.lock}"
+STATE_DIR="${AUTO_REDEPLOY_STATE_DIR:-$ROOT_DIR/.git/auto-redeploy}"
+FAILED_SHA_FILE="$STATE_DIR/last-failed-sha"
 
 CHECK_ONLY=false
 FORCE=false
@@ -27,6 +29,10 @@ log() {
 
 cleanup_lock() {
   rm -rf "$LOCK_DIR"
+}
+
+ensure_state_dir() {
+  mkdir -p "$STATE_DIR"
 }
 
 acquire_lock() {
@@ -206,6 +212,33 @@ log_change_plan() {
   esac
 }
 
+read_failed_sha() {
+  if [[ -f "$FAILED_SHA_FILE" ]]; then
+    tr -d '\r\n' < "$FAILED_SHA_FILE"
+  fi
+}
+
+write_failed_sha() {
+  ensure_state_dir
+  printf '%s\n' "$TARGET_SHA" > "$FAILED_SHA_FILE"
+}
+
+clear_failed_sha() {
+  rm -f "$FAILED_SHA_FILE"
+}
+
+should_skip_failed_sha() {
+  local failed_sha
+  failed_sha="$(read_failed_sha)"
+
+  if [[ -n "$failed_sha" && "$failed_sha" == "$TARGET_SHA" && "$FORCE" != true ]]; then
+    log "Skipping redeploy for previously failed upstream SHA: $TARGET_SHA"
+    return 0
+  fi
+
+  return 1
+}
+
 run_default_deploy() {
   case "$DEPLOY_SCOPE" in
     full)
@@ -241,7 +274,7 @@ run_deploy() {
   if [[ -n "${AUTO_REDEPLOY_DEPLOY_CMD:-}" ]]; then
     log 'Running custom deploy command'
     bash -lc "$AUTO_REDEPLOY_DEPLOY_CMD"
-    return 0
+    return $?
   fi
 
   run_default_deploy
@@ -280,6 +313,10 @@ main() {
     exit 0
   fi
 
+  if should_skip_failed_sha; then
+    exit 0
+  fi
+
   if [[ "$FORCE" != true && "$CURRENT_SHA" == "$TARGET_SHA" ]]; then
     log 'No upstream changes detected; skipping redeploy.'
     exit 0
@@ -292,7 +329,13 @@ main() {
     exit 0
   fi
 
-  run_deploy
+  if ! run_deploy; then
+    write_failed_sha
+    log "Recorded failed upstream SHA: $TARGET_SHA"
+    exit 1
+  fi
+
+  clear_failed_sha
   log 'Auto redeploy finished successfully.'
 }
 

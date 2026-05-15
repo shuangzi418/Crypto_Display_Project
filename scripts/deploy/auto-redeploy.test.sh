@@ -42,6 +42,17 @@ record_pass() {
   printf '[PASS] %s\n' "$1"
 }
 
+assert_contains() {
+  local needle="$1"
+  local file="$2"
+  local message="$3"
+
+  if ! grep -q "$needle" "$file"; then
+    printf 'ASSERT FAILED: %s\nMissing pattern: %s\nFile: %s\n' "$message" "$needle" "$file" >&2
+    exit 1
+  fi
+}
+
 create_fixture() {
   local base_dir="$1"
   local origin_dir="$base_dir/origin.git"
@@ -59,16 +70,29 @@ create_fixture() {
     cat > deploy-stub.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'scope=%s;services=%s;initdb=%s;healthcheck=%s\n' "${AUTO_REDEPLOY_DEPLOY_SCOPE:-}" "${AUTO_REDEPLOY_SERVICES:-}" "${AUTO_REDEPLOY_RUN_INIT_DB:-}" "${AUTO_REDEPLOY_RUN_HEALTHCHECK:-}" >> .auto-deploy.log
+log_file="${AUTO_REDEPLOY_LOG_FILE:-.auto-deploy.log}"
+mkdir -p "$(dirname "$log_file")"
+printf 'scope=%s;services=%s;initdb=%s;healthcheck=%s\n' "${AUTO_REDEPLOY_DEPLOY_SCOPE:-}" "${AUTO_REDEPLOY_SERVICES:-}" "${AUTO_REDEPLOY_RUN_INIT_DB:-}" "${AUTO_REDEPLOY_RUN_HEALTHCHECK:-}" >> "$log_file"
 EOF
     chmod +x deploy-stub.sh
     cat > deploy-hold.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'hold\n' >> .auto-deploy.log
+log_file="${AUTO_REDEPLOY_LOG_FILE:-.auto-deploy.log}"
+mkdir -p "$(dirname "$log_file")"
+printf 'hold\n' >> "$log_file"
 sleep 2
 EOF
     chmod +x deploy-hold.sh
+    cat > deploy-fail.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+log_file="${AUTO_REDEPLOY_LOG_FILE:-.auto-deploy.log}"
+mkdir -p "$(dirname "$log_file")"
+printf 'fail\n' >> "$log_file"
+exit 1
+EOF
+    chmod +x deploy-fail.sh
     cat > scripts/deploy/init-db.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -82,7 +106,7 @@ set -euo pipefail
 EOF
     chmod +x scripts/deploy/healthcheck.sh
     echo 'initial' > README.md
-    git add README.md deploy-stub.sh deploy-hold.sh scripts/deploy/init-db.sh scripts/deploy/healthcheck.sh
+    git add README.md deploy-stub.sh deploy-hold.sh deploy-fail.sh scripts/deploy/init-db.sh scripts/deploy/healthcheck.sh
     git commit -m 'init fixture' >/dev/null 2>&1
     git push -u origin main >/dev/null 2>&1
   )
@@ -227,6 +251,87 @@ test_concurrent_second_run_exits_cleanly() {
   record_pass 'concurrent second run exits cleanly'
 }
 
+test_failed_sha_is_not_retried_automatically() {
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  mapfile -t fixture < <(create_fixture "$tmp_dir")
+  local work_dir="${fixture[1]}"
+  local author_dir="${fixture[2]}"
+  local second_run_log="$tmp_dir/second-run.log"
+  local fail_log="$tmp_dir/fail.log"
+
+  advance_upstream "$author_dir" 'advance frontend failing attempt' 'frontend/src/App.js'
+
+  if AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_LOG_FILE="$fail_log" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-fail.sh' bash "$WRAPPER" >/dev/null 2>&1; then
+    printf 'ASSERT FAILED: failing deploy should return non-zero\n' >&2
+    exit 1
+  fi
+
+  assert_contains "$(git -C "$work_dir" rev-parse origin/main)" "$work_dir/.git/auto-redeploy/last-failed-sha" 'Failed deploy should record failing upstream SHA'
+
+  if ! AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_LOG_FILE="$fail_log" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-fail.sh' bash "$WRAPPER" >"$second_run_log" 2>&1; then
+    printf 'ASSERT FAILED: second run on the same failed SHA should skip cleanly\n' >&2
+    exit 1
+  fi
+
+  assert_eq '1' "$(grep -c '^fail$' "$fail_log")" 'Same failed SHA must not be retried automatically'
+  assert_contains 'Skipping redeploy for previously failed upstream SHA' "$second_run_log" 'Second run should skip the same failed SHA'
+  record_pass 'failed SHA is not retried automatically'
+}
+
+test_force_retries_failed_sha() {
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  mapfile -t fixture < <(create_fixture "$tmp_dir")
+  local work_dir="${fixture[1]}"
+  local author_dir="${fixture[2]}"
+  local fail_log="$tmp_dir/fail.log"
+
+  advance_upstream "$author_dir" 'advance frontend failing force retry' 'frontend/src/App.js'
+
+  if AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_LOG_FILE="$fail_log" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-fail.sh' bash "$WRAPPER" >/dev/null 2>&1; then
+    printf 'ASSERT FAILED: failing deploy should return non-zero\n' >&2
+    exit 1
+  fi
+
+  if AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_LOG_FILE="$fail_log" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-fail.sh' bash "$WRAPPER" --force >/dev/null 2>&1; then
+    printf 'ASSERT FAILED: forced retry should still return non-zero with failing deploy command\n' >&2
+    exit 1
+  fi
+
+  assert_eq '2' "$(grep -c '^fail$' "$fail_log")" 'Force mode should retry the same failed SHA'
+  record_pass 'force mode retries failed SHA'
+}
+
+test_new_sha_retries_after_previous_failure() {
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  mapfile -t fixture < <(create_fixture "$tmp_dir")
+  local work_dir="${fixture[1]}"
+  local author_dir="${fixture[2]}"
+  local fail_log="$tmp_dir/fail.log"
+  local success_log="$tmp_dir/success.log"
+
+  advance_upstream "$author_dir" 'advance frontend failing once' 'frontend/src/App.js'
+
+  if AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_LOG_FILE="$fail_log" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-fail.sh' bash "$WRAPPER" >/dev/null 2>&1; then
+    printf 'ASSERT FAILED: failing deploy should return non-zero\n' >&2
+    exit 1
+  fi
+
+  advance_upstream "$author_dir" 'advance frontend succeeding after failure' 'frontend/src/App.js'
+
+  if ! AUTO_REDEPLOY_ROOT_DIR="$work_dir" AUTO_REDEPLOY_LOG_FILE="$success_log" AUTO_REDEPLOY_DEPLOY_CMD='./deploy-stub.sh' bash "$WRAPPER" >/dev/null; then
+    printf 'ASSERT FAILED: new upstream SHA should be attempted successfully after previous failure\n' >&2
+    exit 1
+  fi
+
+  assert_eq 'fail' "$(tr -d '\r' < "$fail_log" | sed -n '1p')" 'First attempt should be recorded as failure'
+  assert_eq 'scope=services;services=frontend;initdb=false;healthcheck=true' "$(tr -d '\r' < "$success_log" | sed -n '1p')" 'A newer upstream SHA should be attempted normally'
+  assert_file_missing "$work_dir/.git/auto-redeploy/last-failed-sha" 'Successful redeploy should clear failed SHA marker'
+  record_pass 'new upstream SHA retries after previous failure'
+}
+
 main() {
   test_no_upstream_change
   test_upstream_change_redeploys_once
@@ -235,6 +340,9 @@ main() {
   test_check_only_is_read_only
   test_force_runs_without_upstream_change
   test_concurrent_second_run_exits_cleanly
+  test_failed_sha_is_not_retried_automatically
+  test_force_retries_failed_sha
+  test_new_sha_retries_after_previous_failure
   printf '\n[PASS] All %d auto-redeploy contract tests passed.\n' "$PASS_COUNT"
 }
 
