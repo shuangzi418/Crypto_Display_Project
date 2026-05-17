@@ -38,6 +38,12 @@ function AppShell() {
   const isDedicatedH5Host = h5Hosts.includes(currentHost);
   const isH5Route = location.pathname.startsWith('/h5/') || isDedicatedH5Host;
   const hasStoredToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('token'));
+  const needsNicknameSetup = Boolean(
+    isAuthenticated
+    && user
+    && user.role !== 'admin'
+    && (!user.nickname || !String(user.nickname).trim())
+  );
   // auto-redeploy frontend-only smoke marker round 2
 
   // 加载用户信息
@@ -126,9 +132,9 @@ function AppShell() {
         {isDedicatedH5Host ? <Redirect to="/" /> : <MobileNationalSecurityChallenge />}
       </Route>
       <Route exact path="/">
-        {isDedicatedH5Host ? <MobileNationalSecurityChallenge /> : <HomePage />}
+        {isDedicatedH5Host ? <MobileNationalSecurityChallenge /> : <HomePage needsNicknameSetup={needsNicknameSetup} />}
       </Route>
-      <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading}>
+      <PrivateRoute path="/quiz" isAuthenticated={isAuthenticated} isLoading={loading} requiresNickname={!isH5Route} needsNicknameSetup={needsNicknameSetup}>
         <Quiz />
       </PrivateRoute>
       <Route path="/ranking">
@@ -194,7 +200,7 @@ function RouteLoading() {
   );
 }
 
-function PrivateRoute({ children, isAuthenticated, isLoading, ...rest }) {
+function PrivateRoute({ children, isAuthenticated, isLoading, requiresNickname, needsNicknameSetup, ...rest }) {
   return (
     <Route
       {...rest}
@@ -203,7 +209,15 @@ function PrivateRoute({ children, isAuthenticated, isLoading, ...rest }) {
           return <RouteLoading />;
         }
 
-        return isAuthenticated ? children : <Redirect to="/login" />;
+        if (!isAuthenticated) {
+          return <Redirect to="/login" />;
+        }
+
+        if (requiresNickname && needsNicknameSetup) {
+          return <Redirect to="/settings" />;
+        }
+
+        return children;
       }}
     />
   );
@@ -225,11 +239,23 @@ function PublicRoute({ children, isAuthenticated, isLoading, ...rest }) {
 }
 
 // 首页组件
-function HomePage() {
+function HomePage({ needsNicknameSetup }) {
   return (
     <div style={{ padding: '24px', background: '#fff', minHeight: 380 }}>
       <h1>欢迎来到密码知识竞答系统</h1>
       <p>这是一个专注于密码学知识的在线答题平台，旨在普及密码学知识，提高安全意识。</p>
+      {needsNicknameSetup && (
+        <div style={{
+          marginBottom: '16px',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          background: '#fff7e6',
+          border: '1px solid #ffd591',
+          color: '#ad6800'
+        }}>
+          您还未设置排行榜昵称，请先前往 <Link to="/settings">个人设置</Link> 提交昵称，审核通过后才能在排行榜展示昵称。
+        </div>
+      )}
       <p>
         当前站点仅保留参赛用户入口，管理员请使用
         {' '}
