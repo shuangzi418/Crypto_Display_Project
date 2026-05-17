@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Switch, Route, Link, Redirect, useLocation } f
 import { Layout, Menu, Spin } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadUser, logout, refreshToken } from './actions/userActions';
+import { AUTH_ERROR } from './actions/types';
 import Login from './components/Login';
 import Register from './components/Register';
 import Quiz from './components/Quiz';
@@ -41,7 +42,12 @@ function AppShell() {
 
   // 加载用户信息
   useEffect(() => {
-    if (isH5Route || !hasStoredToken) {
+    if (isH5Route) {
+      return;
+    }
+
+    if (!hasStoredToken) {
+      dispatch({ type: AUTH_ERROR });
       return;
     }
 
