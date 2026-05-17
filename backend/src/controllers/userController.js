@@ -308,14 +308,20 @@ exports.updateUserSettings = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (req.body.nickname) {
-      user.nickname = sanitizeInput(req.body.nickname);
-      user.nicknameStatus = req.user.role === 'admin' ? 'approved' : 'pending';
+    if (req.body.nickname !== undefined) {
+      const nextNickname = sanitizeInput(req.body.nickname);
+      if (nextNickname !== user.nickname) {
+        user.nickname = nextNickname;
+        user.nicknameStatus = req.user.role === 'admin' ? 'approved' : 'pending';
+      }
     }
 
     if (req.body.avatar !== undefined) {
-      user.avatar = normalizeAvatarInput(req.body.avatar);
-      user.avatarStatus = req.user.role === 'admin' ? 'approved' : 'pending';
+      const nextAvatar = normalizeAvatarInput(req.body.avatar);
+      if (nextAvatar !== user.avatar) {
+        user.avatar = nextAvatar;
+        user.avatarStatus = req.user.role === 'admin' ? 'approved' : 'pending';
+      }
     }
 
     const updatedUser = await user.save();
