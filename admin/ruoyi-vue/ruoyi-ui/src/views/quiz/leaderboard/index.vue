@@ -27,8 +27,8 @@
           <el-table-column label="用户" min-width="240">
             <template slot-scope="scope">
               <div class="user-cell">
-                <img v-if="scope.row.avatar && scope.row.avatarStatus === 'approved'" :src="scope.row.avatar" class="avatar-image" />
-                <div v-else class="avatar-placeholder">{{ scope.row.username ? scope.row.username.slice(0, 1).toUpperCase() : '?' }}</div>
+                <img v-if="displayAvatarUrl(scope.row)" :src="displayAvatarUrl(scope.row)" class="avatar-image" />
+                <div v-else class="avatar-placeholder">{{ displayAvatarText(scope.row) }}</div>
                 <div>
                   <div class="display-name">{{ displayName(scope.row) }}</div>
                   <div class="sub-text">账号：{{ scope.row.username }}</div>
@@ -93,8 +93,8 @@
           <el-table-column label="用户" min-width="240">
             <template slot-scope="scope">
               <div class="user-cell">
-                <img v-if="scope.row.avatar && scope.row.avatarStatus === 'approved'" :src="scope.row.avatar" class="avatar-image" />
-                <div v-else class="avatar-placeholder">{{ scope.row.username ? scope.row.username.slice(0, 1).toUpperCase() : '?' }}</div>
+                <img v-if="displayAvatarUrl(scope.row)" :src="displayAvatarUrl(scope.row)" class="avatar-image" />
+                <div v-else class="avatar-placeholder">{{ displayAvatarText(scope.row) }}</div>
                 <div>
                   <div class="display-name">{{ displayName(scope.row) }}</div>
                   <div class="sub-text">账号：{{ scope.row.username }}</div>
@@ -229,10 +229,14 @@ export default {
       this.handleCompetitionQuery()
     },
     displayName(row) {
-      if (row.nickname && row.nicknameStatus === 'approved') {
-        return row.nickname
-      }
-      return row.username || '-'
+      return row.displayName || (row.nickname && row.nicknameStatus === 'approved' ? row.nickname : (row.username || '-'))
+    },
+    displayAvatarUrl(row) {
+      return row.displayAvatarUrl || (row.avatar && row.avatarStatus === 'approved' ? row.avatar : '')
+    },
+    displayAvatarText(row) {
+      const fallback = row.displayAvatarText || this.displayName(row) || row.username || '?'
+      return String(fallback).trim().slice(0, 1).toUpperCase() || '?'
     },
     auditLabel(status) {
       if (status === 'approved') {
