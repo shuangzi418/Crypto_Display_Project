@@ -12,6 +12,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="nicknameStatus" column="nicknameStatus" />
         <result property="avatar" column="avatar" />
         <result property="avatarStatus" column="avatarStatus" />
+        <result property="displayName" column="displayName" />
+        <result property="displayAvatarUrl" column="displayAvatarUrl" />
+        <result property="displayAvatarText" column="displayAvatarText" />
         <result property="score" column="score" />
         <result property="completed" column="completed" />
         <result property="competitionId" column="competitionId" />
@@ -36,6 +39,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             u.nicknameStatus,
             u.avatar,
             u.avatarStatus,
+            case
+                when u.nickname is not null and u.nickname != '' and u.nicknameStatus = 'approved' then u.nickname
+                else u.username
+            end as displayName,
+            case
+                when u.avatar is not null and u.avatar != '' and u.avatarStatus = 'approved' then u.avatar
+                else null
+            end as displayAvatarUrl,
+            upper(substr(case
+                when u.nickname is not null and u.nickname != '' and u.nicknameStatus = 'approved' then u.nickname
+                when u.username is not null and u.username != '' then u.username
+                else '?'
+            end, 1, 1)) as displayAvatarText,
             u.score,
             null as completed,
             null as competitionId,
@@ -62,6 +78,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             u.nicknameStatus,
             u.avatar,
             u.avatarStatus,
+            case
+                when u.nickname is not null and u.nickname != '' and u.nicknameStatus = 'approved' then u.nickname
+                else u.username
+            end as displayName,
+            case
+                when u.avatar is not null and u.avatar != '' and u.avatarStatus = 'approved' then u.avatar
+                else null
+            end as displayAvatarUrl,
+            upper(substr(case
+                when u.nickname is not null and u.nickname != '' and u.nicknameStatus = 'approved' then u.nickname
+                when u.username is not null and u.username != '' then u.username
+                else '?'
+            end, 1, 1)) as displayAvatarText,
             cp.score as score,
             cp.completed,
             c.id as competitionId,

@@ -23,6 +23,12 @@ public class QuizLeaderboardEntry extends BaseEntity
 
     private String avatarStatus;
 
+    private String displayName;
+
+    private String displayAvatarUrl;
+
+    private String displayAvatarText;
+
     private Integer score;
 
     private Boolean completed;
@@ -101,6 +107,36 @@ public class QuizLeaderboardEntry extends BaseEntity
     public void setAvatarStatus(String avatarStatus)
     {
         this.avatarStatus = avatarStatus;
+    }
+
+    public String getDisplayName()
+    {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName)
+    {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayAvatarUrl()
+    {
+        return displayAvatarUrl;
+    }
+
+    public void setDisplayAvatarUrl(String displayAvatarUrl)
+    {
+        this.displayAvatarUrl = displayAvatarUrl;
+    }
+
+    public String getDisplayAvatarText()
+    {
+        return displayAvatarText;
+    }
+
+    public void setDisplayAvatarText(String displayAvatarText)
+    {
+        this.displayAvatarText = displayAvatarText;
     }
 
     public Integer getScore()
