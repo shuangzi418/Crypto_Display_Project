@@ -17,3 +17,4 @@ dev-*.log
 askpass.sh
 backend/data/*.cleaned.json
 frontend/src/assets/certificate-template.jpg
+.playwright-mcp
