@@ -4,6 +4,15 @@ import api from '../axios';
 
 const { Option } = Select;
 
+const getDisplayName = (record) => record.displayName || (record.nickname && record.nicknameStatus === 'approved' ? record.nickname : record.username);
+
+const getDisplayAvatarUrl = (record) => record.displayAvatarUrl || (record.avatar && record.avatarStatus === 'approved' ? record.avatar : null);
+
+const getDisplayAvatarText = (record) => {
+  const fallback = record.displayAvatarText || getDisplayName(record) || record.username || '?';
+  return String(fallback).trim().charAt(0).toUpperCase() || '?';
+};
+
 const Ranking = () => {
   const [ranking, setRanking] = useState([]);
   const [competitions, setCompetitions] = useState([]);
@@ -72,15 +81,14 @@ const Ranking = () => {
       dataIndex: 'username',
       key: 'username',
       render: (text, record) => {
-        // 如果有昵称且已通过审核，显示昵称，否则显示用户名
-        const displayName = record.nickname && record.nicknameStatus === 'approved' ? record.nickname : text;
-        
-        // 如果有头像且已通过审核，显示头像
-        if (record.avatar && record.avatarStatus === 'approved') {
+        const displayName = getDisplayName(record);
+        const displayAvatarUrl = getDisplayAvatarUrl(record);
+
+        if (displayAvatarUrl) {
           return (
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <img 
-                src={record.avatar} 
+                src={displayAvatarUrl} 
                 alt={displayName} 
                 style={{ 
                   width: '32px', 
@@ -93,7 +101,27 @@ const Ranking = () => {
             </div>
           );
         }
-        return displayName;
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              marginRight: '8px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#e0f2fe',
+              color: '#0369a1',
+              fontWeight: 700,
+              flexShrink: 0
+            }}>
+              {getDisplayAvatarText(record)}
+            </div>
+            {displayName}
+          </div>
+        );
       },
     },
     {
@@ -115,15 +143,14 @@ const Ranking = () => {
       dataIndex: 'username',
       key: 'username',
       render: (text, record) => {
-        // 如果有昵称且已通过审核，显示昵称，否则显示用户名
-        const displayName = record.nickname && record.nicknameStatus === 'approved' ? record.nickname : text;
-        
-        // 如果有头像且已通过审核，显示头像
-        if (record.avatar && record.avatarStatus === 'approved') {
+        const displayName = getDisplayName(record);
+        const displayAvatarUrl = getDisplayAvatarUrl(record);
+
+        if (displayAvatarUrl) {
           return (
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <img 
-                src={record.avatar} 
+                src={displayAvatarUrl} 
                 alt={displayName} 
                 style={{ 
                   width: '32px', 
@@ -136,7 +163,27 @@ const Ranking = () => {
             </div>
           );
         }
-        return displayName;
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              marginRight: '8px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#e0f2fe',
+              color: '#0369a1',
+              fontWeight: 700,
+              flexShrink: 0
+            }}>
+              {getDisplayAvatarText(record)}
+            </div>
+            {displayName}
+          </div>
+        );
       },
     },
     {

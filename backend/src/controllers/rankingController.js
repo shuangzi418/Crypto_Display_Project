@@ -1,4 +1,5 @@
 const { User } = require('../models');
+const { buildDisplayName, buildAvatarFallbackText, buildDisplayAvatarUrl } = require('../utils/userDisplay');
 
 exports.getUserRanking = async (req, res) => {
   try {
@@ -16,6 +17,9 @@ exports.getUserRanking = async (req, res) => {
       nicknameStatus: user.nicknameStatus,
       avatar: user.avatar,
       avatarStatus: user.avatarStatus,
+      displayName: buildDisplayName(user),
+      displayAvatarUrl: buildDisplayAvatarUrl(user),
+      displayAvatarText: buildAvatarFallbackText(user),
       score: user.score
     }));
 
