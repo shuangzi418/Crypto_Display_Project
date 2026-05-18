@@ -2,7 +2,7 @@
   <div :class="classObj" class="app-wrapper" :style="{'--current-color': theme}">
     <div v-if="device==='mobile'&&sidebar.opened" class="drawer-bg" @click="handleClickOutside"/>
     <sidebar v-if="!sidebar.hide" class="sidebar-container"/>
-    <div :class="{hasTagsView:needTagsView,sidebarHide:sidebar.hide}" class="main-container">
+    <div :class="{hasTagsView:needTagsView,sidebarHide:sidebar.hide,hasFixedHeader:fixedHeader}" class="main-container">
       <div :class="{'fixed-header':fixedHeader}">
         <navbar @setLayout="setLayout"/>
         <tags-view v-if="needTagsView"/>
@@ -70,6 +70,8 @@ export default {
     position: relative;
     height: 100%;
     width: 100%;
+    background: #eef3f8;
+    isolation: isolate;
 
     &.mobile.openSidebar {
       position: fixed;
@@ -77,7 +79,13 @@ export default {
     }
   }
 
-  .main-container:has(.fixed-header) {
+  .main-container {
+    position: relative;
+    min-height: 100vh;
+    background: #f5f7fb;
+  }
+
+  .main-container.hasFixedHeader {
     height: 100vh;
     overflow: hidden;
   }
@@ -98,7 +106,10 @@ export default {
     right: 0;
     z-index: 9;
     width: calc(100% - #{$base-sidebar-width});
-    transition: width 0.28s;
+    background: rgba(245, 247, 251, 0.94);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    transition: width 0.28s, box-shadow 0.28s, background-color 0.28s;
   }
 
   .hideSidebar .fixed-header {
@@ -111,5 +122,22 @@ export default {
 
   .mobile .fixed-header {
     width: 100%;
+  }
+
+  ::v-deep .fixed-header .navbar {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  ::v-deep .fixed-header .tags-view-container {
+    background: rgba(255, 255, 255, 0.9);
+    border-bottom-color: #e2e8f0;
+  }
+
+  ::v-deep .app-main {
+    overflow-x: hidden;
+    scrollbar-gutter: stable both-edges;
+    overscroll-behavior-y: contain;
+    background: transparent;
   }
 </style>
