@@ -12,10 +12,10 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-crypto_pass}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./admin/ruoyi-vue/sql/ry_20260320.sql:/docker-entrypoint-initdb.d/01-ruoyi.sql:ro
-      - ./admin/ruoyi-vue/sql/crypto_quiz_cleanup.sql:/docker-entrypoint-initdb.d/02-ruoyi-cleanup.sql:ro
-      - ./admin/ruoyi-vue/sql/crypto_quiz_menu.sql:/docker-entrypoint-initdb.d/03-ruoyi-menu.sql:ro
-      - ./admin/ruoyi-vue/sql/crypto_quiz_roles.sql:/docker-entrypoint-initdb.d/04-ruoyi-roles.sql:ro
+      - ./admin/cryptoquiz-admin/sql/ry_20260320.sql:/docker-entrypoint-initdb.d/01-ruoyi.sql:ro
+      - ./admin/cryptoquiz-admin/sql/crypto_quiz_cleanup.sql:/docker-entrypoint-initdb.d/02-ruoyi-cleanup.sql:ro
+      - ./admin/cryptoquiz-admin/sql/crypto_quiz_menu.sql:/docker-entrypoint-initdb.d/03-ruoyi-menu.sql:ro
+      - ./admin/cryptoquiz-admin/sql/crypto_quiz_roles.sql:/docker-entrypoint-initdb.d/04-ruoyi-roles.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root123456}"]
       interval: 10s
@@ -73,10 +73,10 @@ services:
     ports:
       - "${BACKEND_BIND_ADDRESS:-0.0.0.0}:5000:5000"
 
-  ruoyi-admin:
+  cryptoquiz-admin:
     build:
-      context: ./admin/ruoyi-vue
-      dockerfile: ruoyi-admin/Dockerfile
+      context: ./admin/cryptoquiz-admin
+      dockerfile: cryptoquiz-admin-module/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -91,21 +91,21 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-crypto_pass}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      RUOYI_TOKEN_SECRET: ${RUOYI_TOKEN_SECRET:-change_this_ruoyi_secret}
-      RUOYI_API_DOCS_ENABLED: ${RUOYI_API_DOCS_ENABLED:-false}
-      RUOYI_SWAGGER_UI_ENABLED: ${RUOYI_SWAGGER_UI_ENABLED:-false}
+      CRYPTOQUIZ_TOKEN_SECRET: ${CRYPTOQUIZ_TOKEN_SECRET:-change_this_ruoyi_secret}
+      CRYPTOQUIZ_API_DOCS_ENABLED: ${CRYPTOQUIZ_API_DOCS_ENABLED:-false}
+      CRYPTOQUIZ_SWAGGER_UI_ENABLED: ${CRYPTOQUIZ_SWAGGER_UI_ENABLED:-false}
     ports:
-      - "${RUOYI_ADMIN_BIND_ADDRESS:-0.0.0.0}:${RUOYI_ADMIN_PORT:-8080}:8080"
+      - "${CRYPTOQUIZ_ADMIN_BIND_ADDRESS:-0.0.0.0}:${CRYPTOQUIZ_ADMIN_PORT:-8080}:8080"
 
-  ruoyi-ui:
+  cryptoquiz-ui:
     build:
-      context: ./admin/ruoyi-vue/ruoyi-ui
+      context: ./admin/cryptoquiz-admin/cryptoquiz-ui
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      - ruoyi-admin
+      - cryptoquiz-admin
     ports:
-      - "${RUOYI_UI_BIND_ADDRESS:-0.0.0.0}:${RUOYI_UI_PORT:-8081}:80"
+      - "${CRYPTOQUIZ_UI_BIND_ADDRESS:-0.0.0.0}:${CRYPTOQUIZ_UI_PORT:-8081}:80"
 
   frontend:
     build:

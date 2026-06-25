@@ -2,12 +2,74 @@
 
 一个面向密码学科普、课堂训练与活动闯关的在线答题平台，采用前后端分离架构，支持 Web 端答题、竞赛训练、排行榜、独立 H5 挑战页和后台管理，适合课程实践、宣传活动和小型赛事场景。
 
+## 更改内容
+
+**最新更新**: 2026-06-25
+
+### 项目重构概要
+
+本项目已完成全面重构，主要包括：
+
+1. **项目框架重新组织** - 优化目录结构，符合正式业务框架标准
+2. **管理后台本地化** - 将 CryptoQuiz 框架深度定制为 CryptoQuiz 管理系统
+3. **代码清理** - 移除临时文件和测试代码，保持项目整洁
+
+### 管理后台本地化改造
+
+#### 目录结构变更
+```
+admin/ruoyi-vue/          → admin/cryptoquiz-admin/
+  ├── ruoyi-admin/        → cryptoquiz-admin-module/
+  ├── ruoyi-common/       → cryptoquiz-common/
+  ├── ruoyi-framework/    → cryptoquiz-framework/
+  ├── ruoyi-system/       → cryptoquiz-system/
+  ├── ruoyi-quartz/       → cryptoquiz-quartz/
+  ├── ruoyi-generator/    → cryptoquiz-generator/
+  └── ruoyi-ui/           → cryptoquiz-ui/
+```
+
+#### Java 包名重构
+- **包名**: `com.ruoyi.*` → `com.cryptoquiz.*`
+- **影响范围**: 291 个 Java 文件
+- **主应用类**: `CryptoQuizApplication` → `CryptoQuizApplication`
+
+#### Maven 配置更新
+- **groupId**: `com.ruoyi` → `com.cryptoquiz`
+- **artifactId**: `ruoyi-*` → `cryptoquiz-*`
+- **影响文件**: 7 个 pom.xml
+
+#### 配置文件更新
+- application*.yml - 包路径和应用配置
+- logback.xml - 日志配置
+- mybatis-config.xml - MyBatis 配置
+- Mapper XML 文件 - 命名空间
+- generator.yml - 代码生成器配置
+- Velocity 模板 - 代码生成模板
+
+### 已删除的临时文件
+- `backend/check-competition-structure.js`
+- `backend/check-question-count.js`
+- `backend/tests/` 目录（包含所有测试文件）
+
+### 重构统计
+- 重命名目录: 8 个
+- 重构 Java 文件: 291 个
+- 修改 pom.xml: 7 个
+- 修改配置文件: 15+ 个
+- 删除临时文件: 10 个
+
+详细重构信息请查看：
+- [Docker 启动指南](./docx/DOCKER_GUIDE.md) - Docker 启动、测试账号、常见问题
+- [完整重构报告](./docx/REFACTOR_REPORT.md) - 重构详细记录
+- [重构检查清单](./docx/REFACTOR_CHECKLIST.md) - 验证清单
+- [项目结构说明](./docx/PROJECT_STRUCTURE.md) - 架构说明
+
 ## 项目亮点
 
 - 前后端分离：`React + Express + MySQL`，结构清晰，便于二次开发与独立部署
 - 业务完整：覆盖用户认证、题库管理、普通答题、竞赛答题、排行榜与后台审核流程
 - H5 活动页：内置密码安全知识挑战，支持昵称一键进入、随机抽题、奖牌生成与历史记录查询
-- 管理能力：集成 RuoYi 管理端，支持题目、竞赛、业务用户、昵称和头像审核等后台操作
+- 管理能力：集成 CryptoQuiz 管理端，支持题目、竞赛、业务用户、昵称和头像审核等后台操作
 - 部署友好：提供 Docker Compose、HTTPS 反代说明和自动化脚本，便于服务器快速上线
 
 ## 快速体验
@@ -30,7 +92,7 @@ Express API Service
         |
         +--> MySQL (users, questions, competitions, H5 records)
         |
-        +--> RuoYi Admin Modules
+        +--> CryptoQuiz Admin Modules
 ```
 
 ## 界面预览
@@ -73,7 +135,7 @@ CryptoQuizSystem/
 |   |   |-- middleware/
 |   |   |-- models/
 |   |   `-- routes/
-|   |-- tests/
+|   |-- scripts/
 |   |-- .env.example
 |   `-- package.json
 |-- frontend/
@@ -81,10 +143,10 @@ CryptoQuizSystem/
 |   |-- src/
 |   `-- package.json
 |-- admin/
-|   `-- ruoyi-vue/
-|       |-- ruoyi-admin/
-|       |-- ruoyi-system/
-|       |-- ruoyi-ui/
+|   `-- cryptoquiz-admin/
+|       |-- cryptoquiz-admin-module/
+|       |-- cryptoquiz-system/
+|       |-- cryptoquiz-ui/
 |       `-- sql/
 |-- scripts/
 |   `-- deploy/
@@ -207,7 +269,7 @@ npm start
 
 - 前端：`http://localhost:3001`
 - H5 挑战：`http://localhost:3001/h5/national-security-challenge`
-- 管理端（RuoYi）：`http://localhost:8081/login`
+- 管理端（CryptoQuiz）：`http://localhost:8081/login`
 - 后端：`http://localhost:5000`
 - 健康检查：`http://localhost:5000/health`
 
@@ -217,24 +279,24 @@ npm start
 REACT_APP_ADMIN_PORTAL_URL=http://localhost:8081
 ```
 
-RuoYi 本地启动脚本：
+CryptoQuiz 本地启动脚本：
 
 ```bash
-npm run ruoyi:admin
+npm run cryptoquiz:admin
 npm run ruoyi:ui
 ```
 
 或一键同时启动：
 
 ```bash
-npm run ruoyi:stack
+npm run cryptoquiz:stack
 ```
 
 说明：
 
-- `ruoyi:admin` 与 `ruoyi:stack` 会先检查 `backend/.env` 中配置的 MySQL 是否可达
-- `ruoyi:admin` 会检查 `8080`，`ruoyi:ui` 会检查 `8081`，`ruoyi:stack` 会同时检查两个端口是否被占用
-- `ruoyi:admin` 与 `ruoyi:stack` 会优先检查本地 Redis；如果 `127.0.0.1:6379` 不可用且 Docker 可用，会自动拉起 `cryptoquiz-redis` 容器
+- `cryptoquiz:admin` 与 `cryptoquiz:stack` 会先检查 `backend/.env` 中配置的 MySQL 是否可达
+- `cryptoquiz:admin` 会检查 `8080`，`ruoyi:ui` 会检查 `8081`，`cryptoquiz:stack` 会同时检查两个端口是否被占用
+- `cryptoquiz:admin` 与 `cryptoquiz:stack` 会优先检查本地 Redis；如果 `127.0.0.1:6379` 不可用且 Docker 可用，会自动拉起 `cryptoquiz-redis` 容器
 
 ### 4. H5 密码安全挑战
 
@@ -318,7 +380,7 @@ docker compose down
 
 ## 服务器一键部署
 
-当前仓库已支持将普通前端、Node API、RuoYi 后台、MySQL、Redis 一起部署到同一台 Linux 服务器。
+当前仓库已支持将普通前端、Node API、CryptoQuiz 后台、MySQL、Redis 一起部署到同一台 Linux 服务器。
 
 适用前提：
 
@@ -344,7 +406,7 @@ bash scripts/deploy/update.sh
 - 缺失工具安装（curl、git、Docker）
 - 生成或补齐 `.env`
 - 启动 `mysql`、`redis`、`backend`、`frontend`、`ruoyi-admin`、`ruoyi-ui`
-- 初始化或补齐 RuoYi 系统表、竞赛菜单、角色和清理脚本
+- 初始化或补齐 CryptoQuiz 系统表、竞赛菜单、角色和清理脚本
 - 执行健康检查
 
 如果你希望接入宿主机 Nginx / 域名 / HTTPS，可在 `.env` 中配置：
@@ -361,7 +423,7 @@ LETSENCRYPT_EMAIL=ops@example.com
 说明：
 
 - 开启 `ENABLE_HOST_NGINX=true` 后，安装脚本会自动把前台与后台容器改为仅监听 `127.0.0.1`
-- 宿主机 Nginx 会反向代理到普通前台、独立 H5 域名和 RuoYi 后台
+- 宿主机 Nginx 会反向代理到普通前台、独立 H5 域名和 CryptoQuiz 后台
 - 安装脚本会自动根据 `APP_DOMAIN` / `ADMIN_DOMAIN` / `H5_DOMAIN` 生成 `FRONTEND_URL`、`CORS_ORIGIN`、`REACT_APP_H5_HOSTS` 和前端后台入口地址
 - 若同时设置 `ENABLE_HTTPS=true` 且域名已解析到服务器，会自动通过 Certbot 申请证书
 - 未提供域名时，脚本会跳过 HTTPS 申请，保留当前端口访问方式
@@ -377,11 +439,11 @@ bash scripts/deploy/check-env.sh
 - 用户前台：`http://服务器IP/`
 - H5 挑战：`http://服务器IP/h5/national-security-challenge`
 - Node API：`http://服务器IP:5000/health`
-- RuoYi 后台：`http://服务器IP:8081/login`
+- CryptoQuiz 后台：`http://服务器IP:8081/login`
 
 说明：
 
-- RuoYi 后台初始化账号仍为 `admin / admin123`
+- CryptoQuiz 后台初始化账号仍为 `admin / admin123`
 - 首次登录后会被强制要求修改密码
 - Swagger / SpringDoc 在部署配置下默认关闭
 
@@ -552,3 +614,12 @@ npm run sql:import
 - 引入更完整的安全中间件，如请求限流和 Helmet
 - 将邮件、认证、配置逻辑进一步拆分为独立 service 层
 - 逐步减少 `localStorage` 中的令牌依赖，进一步向 Cookie-first 方案收敛
+
+## 项目文档
+
+- [Docker 启动指南](./docx/DOCKER_GUIDE.md) - Docker 启动、测试账号、故障排查
+- [项目结构说明](./docx/PROJECT_STRUCTURE.md) - 详细的目录结构和架构说明
+- [重构完成报告](./docx/REFACTOR_REPORT.md) - 最新重构的详细记录
+- [重构检查清单](./docx/REFACTOR_CHECKLIST.md) - 重构任务验证清单
+- [任务完成总结](./docx/COMPLETION_SUMMARY.md) - 项目重构完成总结
+- [HTTPS 配置指南](./docx/HTTPS_SETUP.md) - HTTPS 部署配置说明
