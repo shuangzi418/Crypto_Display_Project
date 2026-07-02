@@ -193,6 +193,8 @@ public class QuizQuestionServiceImpl implements IQuizQuestionService
         question.setCategory(StringUtils.trim(row.getCategory()));
         question.setDifficulty(normalizeDifficulty(row.getDifficulty()));
         question.setPoints(parsePoints(row.getPoints(), excelRowNum));
+        question.setCorrectExplanation(StringUtils.trim(row.getCorrectExplanation()));
+        question.setWrongExplanation(StringUtils.trim(row.getWrongExplanation()));
         question.setOptions(buildOptions(row));
         question.setCorrectAnswer(parseCorrectAnswer(row.getCorrectAnswer(), question.getOptions(), excelRowNum));
         normalizeQuestion(question);

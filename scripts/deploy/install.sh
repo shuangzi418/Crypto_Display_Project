@@ -101,7 +101,7 @@ set_env_value() {
 current_env_value() {
   local key="$1"
   if grep -q "^${key}=" "$ENV_FILE"; then
-    grep "^${key}=" "$ENV_FILE" | tail -n1 | cut -d'=' -f2-
+    tr -d '\r' < "$ENV_FILE" | grep "^${key}=" | tail -n1 | cut -d'=' -f2-
   else
     printf ''
   fi
@@ -152,8 +152,8 @@ prepare_env_file() {
   ensure_env_value REACT_APP_H5_HOSTS ""
   ensure_env_value FRONTEND_BIND_ADDRESS 0.0.0.0
   ensure_env_value BACKEND_BIND_ADDRESS 0.0.0.0
-  ensure_env_value RUOYI_ADMIN_BIND_ADDRESS 0.0.0.0
-  ensure_env_value RUOYI_UI_BIND_ADDRESS 0.0.0.0
+  ensure_env_value CRYPTOQUIZ_ADMIN_BIND_ADDRESS 0.0.0.0
+  ensure_env_value CRYPTOQUIZ_UI_BIND_ADDRESS 0.0.0.0
 
   local host_ip frontend_url admin_url h5_url cors_origin h5_hosts scheme app_domain admin_domain h5_domain
   host_ip="$(server_ip)"
@@ -186,7 +186,7 @@ prepare_env_file() {
 
   ensure_secret_value JWT_SECRET replace_with_a_strong_secret change_this_jwt_secret
   ensure_secret_value H5_JWT_SECRET replace_with_h5_jwt_secret change_this_h5_jwt_secret
-  ensure_secret_value RUOYI_TOKEN_SECRET replace_with_another_strong_secret change_this_ruoyi_secret
+  ensure_secret_value CRYPTOQUIZ_TOKEN_SECRET replace_with_another_strong_secret change_this_ruoyi_secret
   ensure_secret_value MYSQL_ROOT_PASSWORD root123456
   ensure_secret_value MYSQL_PASSWORD crypto_pass
   ensure_secret_value H5_MYSQL_PASSWORD replace_with_h5_db_password crypto_h5_pass
@@ -195,20 +195,20 @@ prepare_env_file() {
   set_env_value CORS_ORIGIN "$cors_origin"
   set_env_value REACT_APP_ADMIN_PORTAL_URL "$admin_url"
   set_env_value REACT_APP_H5_HOSTS "$h5_hosts"
-  ensure_env_value RUOYI_API_DOCS_ENABLED false
-  ensure_env_value RUOYI_SWAGGER_UI_ENABLED false
+  ensure_env_value CRYPTOQUIZ_API_DOCS_ENABLED false
+  ensure_env_value CRYPTOQUIZ_SWAGGER_UI_ENABLED false
 
   if [[ "$(current_env_value ENABLE_HOST_NGINX)" == "true" ]]; then
     set_env_value FRONTEND_BIND_ADDRESS 127.0.0.1
     set_env_value BACKEND_BIND_ADDRESS 127.0.0.1
-    set_env_value RUOYI_ADMIN_BIND_ADDRESS 127.0.0.1
+    set_env_value CRYPTOQUIZ_ADMIN_BIND_ADDRESS 127.0.0.1
     if [[ "$(current_env_value FRONTEND_PORT)" == "80" || -z "$(current_env_value FRONTEND_PORT)" ]]; then
       set_env_value FRONTEND_PORT 3000
     fi
     if [[ -n "$(current_env_value ADMIN_DOMAIN)" ]]; then
-      set_env_value RUOYI_UI_BIND_ADDRESS 127.0.0.1
+      set_env_value CRYPTOQUIZ_UI_BIND_ADDRESS 127.0.0.1
     else
-      set_env_value RUOYI_UI_BIND_ADDRESS 0.0.0.0
+      set_env_value CRYPTOQUIZ_UI_BIND_ADDRESS 0.0.0.0
     fi
   fi
 }
@@ -241,12 +241,12 @@ print_summary() {
 部署完成。
 
 用户前台: http://${host_ip:-127.0.0.1}
-Node API: http://${host_ip:-127.0.0.1}:5000/health
-RuoYi 后台: http://${host_ip:-127.0.0.1}:8081/login
-RuoYi 后端: http://${host_ip:-127.0.0.1}:8080/captchaImage
+Node API: http://${host_ip:-127.0.0.1}:$(current_env_value BACKEND_PORT | sed 's/^$/5000/')/health
+CryptoQuiz 后台: http://${host_ip:-127.0.0.1}:8081/login
+CryptoQuiz 后端: http://${host_ip:-127.0.0.1}:8080/captchaImage
 H5 挑战: ${h5_summary_url}
 
-首次登录 RuoYi 后台请使用初始化账号 admin / admin123，并按提示立即修改密码。
+首次登录 CryptoQuiz 后台请使用初始化账号 admin / admin123，并按提示立即修改密码。
 .env 已写入到: $ENV_FILE
 EOF
 }

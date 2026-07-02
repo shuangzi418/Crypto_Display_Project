@@ -17,6 +17,14 @@ Question.init({
     type: DataTypes.TEXT('long'),
     allowNull: true
   },
+  correctExplanation: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true
+  },
+  wrongExplanation: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true
+  },
   options: {
     type: DataTypes.TEXT('long'),
     allowNull: false,

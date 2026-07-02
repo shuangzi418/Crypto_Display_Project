@@ -59,10 +59,9 @@ admin/ruoyi-vue/          → admin/cryptoquiz-admin/
 - 删除临时文件: 10 个
 
 详细重构信息请查看：
-- [Docker 启动指南](./docx/DOCKER_GUIDE.md) - Docker 启动、测试账号、常见问题
-- [完整重构报告](./docx/REFACTOR_REPORT.md) - 重构详细记录
-- [重构检查清单](./docx/REFACTOR_CHECKLIST.md) - 验证清单
-- [项目结构说明](./docx/PROJECT_STRUCTURE.md) - 架构说明
+- [Docker 启动指南](./docs/DOCKER_GUIDE.md) - Docker 启动、测试账号、常见问题
+- [项目结构说明](./docs/PROJECT_STRUCTURE.md) - 架构说明
+- [HTTPS 配置指南](./docs/HTTPS_SETUP.md) - HTTPS 部署配置说明
 
 ## 项目亮点
 
@@ -151,7 +150,10 @@ CryptoQuizSystem/
 |-- scripts/
 |   `-- deploy/
 |-- .gitignore
-|-- HTTPS_SETUP.md
+|-- docs/
+|   |-- DOCKER_GUIDE.md
+|   |-- HTTPS_SETUP.md
+|   `-- PROJECT_STRUCTURE.md
 |-- package.json
 `-- README.md
 ```
@@ -270,8 +272,8 @@ npm start
 - 前端：`http://localhost:3001`
 - H5 挑战：`http://localhost:3001/h5/national-security-challenge`
 - 管理端（CryptoQuiz）：`http://localhost:8081/login`
-- 后端：`http://localhost:5000`
-- 健康检查：`http://localhost:5000/health`
+- 后端：`http://localhost:5300`
+- 健康检查：`http://localhost:5300/health`
 
 如果需要让普通前端中的 `/admin-login` 指向其他后台地址，可为前端额外配置：
 
@@ -283,7 +285,7 @@ CryptoQuiz 本地启动脚本：
 
 ```bash
 npm run cryptoquiz:admin
-npm run ruoyi:ui
+npm run cryptoquiz:ui
 ```
 
 或一键同时启动：
@@ -295,7 +297,7 @@ npm run cryptoquiz:stack
 说明：
 
 - `cryptoquiz:admin` 与 `cryptoquiz:stack` 会先检查 `backend/.env` 中配置的 MySQL 是否可达
-- `cryptoquiz:admin` 会检查 `8080`，`ruoyi:ui` 会检查 `8081`，`cryptoquiz:stack` 会同时检查两个端口是否被占用
+- `cryptoquiz:admin` 会检查 `8080`，`cryptoquiz:ui` 会检查 `8081`，`cryptoquiz:stack` 会同时检查两个端口是否被占用
 - `cryptoquiz:admin` 与 `cryptoquiz:stack` 会优先检查本地 Redis；如果 `127.0.0.1:6379` 不可用且 Docker 可用，会自动拉起 `cryptoquiz-redis` 容器
 
 ### 4. H5 密码安全挑战
@@ -363,7 +365,7 @@ docker compose up -d --build
 
 - 前端：`http://服务器IP/`
 - H5 挑战：`http://服务器IP/h5/national-security-challenge`
-- 后端：`http://服务器IP:5000/health`
+- 后端：`http://服务器IP:5300/health`
 - MySQL：容器内 `mysql:3306`
 
 ### 3. 常用 Docker 命令
@@ -405,7 +407,7 @@ bash scripts/deploy/update.sh
 - 环境检查（Linux、磁盘、内存、端口、Docker）
 - 缺失工具安装（curl、git、Docker）
 - 生成或补齐 `.env`
-- 启动 `mysql`、`redis`、`backend`、`frontend`、`ruoyi-admin`、`ruoyi-ui`
+- 启动 `mysql`、`redis`、`backend`、`frontend`、`cryptoquiz-admin`、`cryptoquiz-ui`
 - 初始化或补齐 CryptoQuiz 系统表、竞赛菜单、角色和清理脚本
 - 执行健康检查
 
@@ -438,7 +440,7 @@ bash scripts/deploy/check-env.sh
 
 - 用户前台：`http://服务器IP/`
 - H5 挑战：`http://服务器IP/h5/national-security-challenge`
-- Node API：`http://服务器IP:5000/health`
+- Node API：`http://服务器IP:5300/health`
 - CryptoQuiz 后台：`http://服务器IP:8081/login`
 
 说明：
@@ -617,9 +619,6 @@ npm run sql:import
 
 ## 项目文档
 
-- [Docker 启动指南](./docx/DOCKER_GUIDE.md) - Docker 启动、测试账号、故障排查
-- [项目结构说明](./docx/PROJECT_STRUCTURE.md) - 详细的目录结构和架构说明
-- [重构完成报告](./docx/REFACTOR_REPORT.md) - 最新重构的详细记录
-- [重构检查清单](./docx/REFACTOR_CHECKLIST.md) - 重构任务验证清单
-- [任务完成总结](./docx/COMPLETION_SUMMARY.md) - 项目重构完成总结
-- [HTTPS 配置指南](./docx/HTTPS_SETUP.md) - HTTPS 部署配置说明
+- [Docker 启动指南](./docs/DOCKER_GUIDE.md) - Docker 启动、测试账号、故障排查
+- [项目结构说明](./docs/PROJECT_STRUCTURE.md) - 详细的目录结构和架构说明
+- [HTTPS 配置指南](./docs/HTTPS_SETUP.md) - HTTPS 部署配置说明

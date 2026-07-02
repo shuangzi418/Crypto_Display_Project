@@ -50,6 +50,12 @@ public class QuizQuestion extends BaseEntity
     @NotNull(message = "题目分值不能为空")
     private Integer points;
 
+    @Excel(name = "正确答案解析")
+    private String correctExplanation;
+
+    @Excel(name = "错误答案解析")
+    private String wrongExplanation;
+
     public Long getId()
     {
         return id;
@@ -181,5 +187,25 @@ public class QuizQuestion extends BaseEntity
     public void setPoints(Integer points)
     {
         this.points = points;
+    }
+
+    public String getCorrectExplanation()
+    {
+        return correctExplanation;
+    }
+
+    public void setCorrectExplanation(String correctExplanation)
+    {
+        this.correctExplanation = correctExplanation;
+    }
+
+    public String getWrongExplanation()
+    {
+        return wrongExplanation;
+    }
+
+    public void setWrongExplanation(String wrongExplanation)
+    {
+        this.wrongExplanation = wrongExplanation;
     }
 }

@@ -130,16 +130,16 @@ classify_changes() {
         RUN_INIT_DB=true
         RUN_HEALTHCHECK=true
         ;;
-      admin/ruoyi-vue/ruoyi-ui/*)
-        add_service ruoyi-ui
+      admin/cryptoquiz-admin/cryptoquiz-ui/*)
+        add_service cryptoquiz-ui
         RUN_HEALTHCHECK=true
         ;;
-      admin/ruoyi-vue/sql/*)
+      admin/cryptoquiz-admin/sql/*)
         RUN_INIT_DB=true
         RUN_HEALTHCHECK=true
         ;;
-      admin/ruoyi-vue/*)
-        add_service ruoyi-admin
+      admin/cryptoquiz-admin/*)
+        add_service cryptoquiz-admin
         RUN_INIT_DB=true
         RUN_HEALTHCHECK=true
         ;;
@@ -157,13 +157,13 @@ classify_changes() {
         RUN_INIT_DB=true
         RUN_HEALTHCHECK=true
         ;;
-      admin/ruoyi-vue/ruoyi-admin/Dockerfile)
-        add_service ruoyi-admin
+      admin/cryptoquiz-admin/cryptoquiz-admin-module/Dockerfile)
+        add_service cryptoquiz-admin
         RUN_INIT_DB=true
         RUN_HEALTHCHECK=true
         ;;
-      admin/ruoyi-vue/ruoyi-ui/Dockerfile)
-        add_service ruoyi-ui
+      admin/cryptoquiz-admin/cryptoquiz-ui/Dockerfile)
+        add_service cryptoquiz-ui
         RUN_HEALTHCHECK=true
         ;;
       docs/*|README.md|scripts/deploy/systemd/*|.gitattributes|.gitignore|.editorconfig)

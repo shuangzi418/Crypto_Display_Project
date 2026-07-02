@@ -216,7 +216,8 @@ exports.getQuestions = async (req, res) => {
 
     res.json(serializeQuestions(questions, {
       includeCorrectAnswer: includeAdminFields,
-      includeExplanation: includeAdminFields
+      includeExplanation: includeAdminFields,
+      includeReviewExplanations: includeAdminFields
     }));
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -233,7 +234,8 @@ exports.getQuestionById = async (req, res) => {
 
     res.json(serializeQuestion(question, {
       includeCorrectAnswer: req.user && req.user.role === 'admin',
-      includeExplanation: req.user && req.user.role === 'admin'
+      includeExplanation: req.user && req.user.role === 'admin',
+      includeReviewExplanations: req.user && req.user.role === 'admin'
     }));
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -256,6 +258,8 @@ exports.updateQuestion = async (req, res) => {
       title: req.body.title !== undefined ? req.body.title : question.title,
       content: req.body.content !== undefined ? req.body.content : question.content,
       explanation: req.body.explanation !== undefined ? req.body.explanation : question.explanation,
+      correctExplanation: req.body.correctExplanation !== undefined ? req.body.correctExplanation : question.correctExplanation,
+      wrongExplanation: req.body.wrongExplanation !== undefined ? req.body.wrongExplanation : question.wrongExplanation,
       options: req.body.options !== undefined ? req.body.options : question.options,
       correctAnswer: req.body.correctAnswer !== undefined ? req.body.correctAnswer : question.correctAnswer,
       difficulty: req.body.difficulty !== undefined ? req.body.difficulty : question.difficulty,

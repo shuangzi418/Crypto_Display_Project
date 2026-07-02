@@ -141,6 +141,16 @@ const getQuestionExplanation = (question) => {
     || '建议结合标准答案回顾本题所涉及的密码安全知识点，进一步理解正确做法和风险边界。';
 };
 
+const getCorrectExplanation = (question) => {
+  return question?.correctExplanation
+    || getQuestionExplanation(question);
+};
+
+const getWrongExplanation = (question) => {
+  return question?.wrongExplanation
+    || null;
+};
+
 exports.getNationalSecurityChallenge = async (req, res) => {
   try {
     const questions = await loadChallengeQuestions();
@@ -230,7 +240,9 @@ exports.submitNationalSecurityChallenge = async (req, res) => {
           selectedAnswer,
           correctAnswer: question.correctAnswer,
           isCorrect,
-          explanation: getQuestionExplanation(question)
+          explanation: getQuestionExplanation(question),
+          correctExplanation: getCorrectExplanation(question),
+          wrongExplanation: getWrongExplanation(question)
         });
         return;
       }
@@ -255,7 +267,9 @@ exports.submitNationalSecurityChallenge = async (req, res) => {
         selectedAnswer,
         correctAnswer: question.correctAnswer,
         isCorrect,
-        explanation: getQuestionExplanation(question)
+        explanation: getQuestionExplanation(question),
+        correctExplanation: getCorrectExplanation(question),
+        wrongExplanation: getWrongExplanation(question)
       });
     });
 

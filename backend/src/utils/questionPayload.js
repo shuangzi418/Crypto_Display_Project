@@ -21,6 +21,8 @@ const normalizeQuestionPayload = (payload) => {
   const title = sanitizeInput(payload.title);
   const content = sanitizeInput(payload.content);
   const explanation = sanitizeInput(payload.explanation) || null;
+  const correctExplanation = sanitizeInput(payload.correctExplanation) || null;
+  const wrongExplanation = sanitizeInput(payload.wrongExplanation) || null;
   const options = normalizeOptions(payload.options);
   const correctAnswer = Number(payload.correctAnswer);
   const difficulty = sanitizeInput(payload.difficulty);
@@ -59,6 +61,8 @@ const normalizeQuestionPayload = (payload) => {
     title,
     content,
     explanation,
+    correctExplanation,
+    wrongExplanation,
     options,
     correctAnswer,
     difficulty,

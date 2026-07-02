@@ -2,7 +2,9 @@ package com.cryptoquiz.web.controller.quiz;
 
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.File;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +21,7 @@ import com.cryptoquiz.common.core.controller.BaseController;
 import com.cryptoquiz.common.core.domain.AjaxResult;
 import com.cryptoquiz.common.core.page.TableDataInfo;
 import com.cryptoquiz.common.enums.BusinessType;
+import com.cryptoquiz.common.utils.file.FileUtils;
 import com.cryptoquiz.system.domain.QuizQuestion;
 import com.cryptoquiz.system.domain.QuizQuestionImportRow;
 import com.cryptoquiz.common.utils.poi.ExcelUtil;
@@ -78,6 +81,21 @@ public class QuizQuestionController extends BaseController
     @PostMapping("/importTemplate")
     public void importTemplate(HttpServletResponse response)
     {
+        try
+        {
+            File templateFile = new File("/usr/share/nginx/html/templates/question-import-template.xlsx");
+            if (templateFile.exists())
+            {
+                response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+                FileUtils.setAttachmentResponseHeader(response, "question-import-template.xlsx");
+                FileUtils.writeBytes(templateFile.getAbsolutePath(), response.getOutputStream());
+                return;
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
         ExcelUtil<QuizQuestionImportRow> util = new ExcelUtil<QuizQuestionImportRow>(QuizQuestionImportRow.class);
         util.importTemplateExcel(response, "赛题导入模板");
     }

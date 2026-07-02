@@ -13,11 +13,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="difficulty" column="difficulty" />
         <result property="category" column="category" />
         <result property="points" column="points" />
+        <result property="correctExplanation" column="correctExplanation" />
+        <result property="wrongExplanation" column="wrongExplanation" />
         <result property="createTime" column="createdAt" />
     </resultMap>
 
     <sql id="selectQuestionColumns">
-        select id, title, content, options, correctAnswer, difficulty, category, points, createdAt
+        select id, title, content, options, correctAnswer, difficulty, category, points, correctExplanation, wrongExplanation, createdAt
         from questions
     </sql>
 
@@ -74,6 +76,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             difficulty,
             category,
             points,
+            correctExplanation,
+            wrongExplanation,
             createdAt
         ) values (
             #{title},
@@ -83,6 +87,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{difficulty},
             #{category},
             #{points},
+            #{correctExplanation},
+            #{wrongExplanation},
             sysdate()
         )
     </insert>
@@ -97,6 +103,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="difficulty != null and difficulty != ''">difficulty = #{difficulty},</if>
             <if test="category != null and category != ''">category = #{category},</if>
             <if test="points != null">points = #{points},</if>
+            <if test="correctExplanation != null">correctExplanation = #{correctExplanation},</if>
+            <if test="wrongExplanation != null">wrongExplanation = #{wrongExplanation},</if>
         </set>
         where id = #{id}
     </update>

@@ -77,7 +77,7 @@ main() {
   local has_sys_user
   has_sys_user="$(run_mysql_query "select count(*) from information_schema.tables where table_schema='${MYSQL_DATABASE}' and table_name='sys_user';")"
   if [[ "$has_sys_user" == "0" ]]; then
-    printf '[INIT] 导入 RuoYi 系统表\n'
+    printf '[INIT] 导入 CryptoQuiz 管理后台基础系统表\n'
     run_mysql_file /docker-entrypoint-initdb.d/01-ruoyi.sql
   fi
 

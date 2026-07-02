@@ -6,12 +6,15 @@ ENV_FILE="$ROOT_DIR/.env"
 
 if [[ -f "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090
-  set -a && source "$ENV_FILE" && set +a
+  set -a
+  source <(tr -d '\r' < "$ENV_FILE")
+  set +a
 fi
 
 FRONTEND_PORT="${FRONTEND_PORT:-80}"
-RUOYI_UI_PORT="${RUOYI_UI_PORT:-8081}"
-RUOYI_ADMIN_PORT="${RUOYI_ADMIN_PORT:-8080}"
+BACKEND_PORT="${BACKEND_PORT:-5000}"
+CRYPTOQUIZ_UI_PORT="${CRYPTOQUIZ_UI_PORT:-8081}"
+CRYPTOQUIZ_ADMIN_PORT="${CRYPTOQUIZ_ADMIN_PORT:-8080}"
 MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-root123456}"
 ENABLE_HOST_NGINX="${ENABLE_HOST_NGINX:-false}"
 
@@ -51,9 +54,9 @@ main() {
   docker compose exec -T redis redis-cli ping | grep -q PONG
 
   check_url 'frontend' "http://127.0.0.1:${FRONTEND_PORT}/"
-  check_url 'backend health' 'http://127.0.0.1:5000/health'
-  check_url 'ruoyi login page' "http://127.0.0.1:${RUOYI_UI_PORT}/login"
-  check_url 'ruoyi captcha' "http://127.0.0.1:${RUOYI_ADMIN_PORT}/captchaImage"
+  check_url 'backend health' "http://127.0.0.1:${BACKEND_PORT}/health"
+  check_url 'cryptoquiz ui login page' "http://127.0.0.1:${CRYPTOQUIZ_UI_PORT}/login"
+  check_url 'cryptoquiz admin captcha' "http://127.0.0.1:${CRYPTOQUIZ_ADMIN_PORT}/captchaImage"
 
   if [[ "$ENABLE_HOST_NGINX" == "true" ]]; then
     check_url 'nginx frontend proxy' 'http://127.0.0.1/'

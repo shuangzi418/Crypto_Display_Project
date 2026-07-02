@@ -190,6 +190,8 @@ const QuestionManagement = () => {
       title: question.title,
       content: question.content,
       explanation: question.explanation,
+      correctExplanation: question.correctExplanation,
+      wrongExplanation: question.wrongExplanation,
       options: Array.isArray(question.options) ? question.options.join('\n') : '',
       correctAnswer: question.correctAnswer,
       difficulty: question.difficulty,
@@ -202,12 +204,14 @@ const QuestionManagement = () => {
   const handleSaveQuestion = async (values) => {
     try {
       setLoading(true);
-      const { title, content, explanation, options, correctAnswer, difficulty, category, points } = values;
+      const { title, content, explanation, correctExplanation, wrongExplanation, options, correctAnswer, difficulty, category, points } = values;
 
       const questionData = {
         title,
         content,
         explanation,
+        correctExplanation,
+        wrongExplanation,
         options: options.split('\n').filter((opt) => opt.trim() !== ''),
         correctAnswer: parseInt(correctAnswer, 10),
         difficulty,
@@ -625,6 +629,20 @@ D: 分组加密
             name="explanation"
           >
             <TextArea rows={4} placeholder="请输入题目解析，便于答题后展示学习说明" />
+          </Form.Item>
+
+          <Form.Item
+            label="正确答案解析"
+            name="correctExplanation"
+          >
+            <TextArea rows={3} placeholder="请输入答对后展示的正确答案解析" />
+          </Form.Item>
+
+          <Form.Item
+            label="错误答案解析"
+            name="wrongExplanation"
+          >
+            <TextArea rows={3} placeholder="请输入答错后额外展示的错误答案解析" />
           </Form.Item>
 
           <Form.Item

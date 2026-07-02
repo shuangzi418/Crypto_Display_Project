@@ -39,7 +39,7 @@ const ensureQuestionExplanationColumn = async (queryInterface) => {
   const questionTable = await queryInterface.describeTable('questions');
 
   if (questionTable.explanation) {
-    return;
+    return questionTable;
   }
 
   await queryInterface.addColumn('questions', 'explanation', {
@@ -47,6 +47,28 @@ const ensureQuestionExplanationColumn = async (queryInterface) => {
     allowNull: true,
     defaultValue: null
   });
+
+  return await queryInterface.describeTable('questions');
+};
+
+const ensureQuestionReviewExplanationColumns = async (queryInterface) => {
+  const questionTable = await ensureQuestionExplanationColumn(queryInterface);
+
+  if (!questionTable.correctExplanation) {
+    await queryInterface.addColumn('questions', 'correctExplanation', {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
+      defaultValue: null
+    });
+  }
+
+  if (!questionTable.wrongExplanation) {
+    await queryInterface.addColumn('questions', 'wrongExplanation', {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
+      defaultValue: null
+    });
+  }
 };
 
 const ensureH5UserPhoneColumn = async (queryInterface) => {
@@ -74,7 +96,7 @@ const ensureSchemaCompatibility = async () => {
 
   await ensureAvatarColumn(queryInterface);
   await ensureSubmissionCompetitionColumn(queryInterface);
-  await ensureQuestionExplanationColumn(queryInterface);
+  await ensureQuestionReviewExplanationColumns(queryInterface);
   await ensureH5UserPhoneColumn(h5QueryInterface);
 };
 

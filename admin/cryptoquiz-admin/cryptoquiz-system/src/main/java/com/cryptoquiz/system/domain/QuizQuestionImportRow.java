@@ -43,6 +43,12 @@ public class QuizQuestionImportRow
     @Excel(name = "分值", prompt = "必填；填写正整数", type = Excel.Type.IMPORT)
     private String points;
 
+    @Excel(name = "正确答案解析", prompt = "选填；答对后展示给用户", type = Excel.Type.IMPORT)
+    private String correctExplanation;
+
+    @Excel(name = "错误答案解析", prompt = "选填；答错后额外展示给用户", type = Excel.Type.IMPORT)
+    private String wrongExplanation;
+
     public String getTitle()
     {
         return title;
@@ -161,5 +167,25 @@ public class QuizQuestionImportRow
     public void setPoints(String points)
     {
         this.points = points;
+    }
+
+    public String getCorrectExplanation()
+    {
+        return correctExplanation;
+    }
+
+    public void setCorrectExplanation(String correctExplanation)
+    {
+        this.correctExplanation = correctExplanation;
+    }
+
+    public String getWrongExplanation()
+    {
+        return wrongExplanation;
+    }
+
+    public void setWrongExplanation(String wrongExplanation)
+    {
+        this.wrongExplanation = wrongExplanation;
     }
 }

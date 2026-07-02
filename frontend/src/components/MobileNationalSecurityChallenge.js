@@ -411,10 +411,26 @@ function MobileNationalSecurityChallenge() {
                       </div>
                     </div>
 
-                    <div className="mobile-h5-review-explanation">
-                      <Text strong>解析</Text>
-                      <Paragraph className="mobile-h5-paragraph">{item.explanation}</Paragraph>
-                    </div>
+                    {item.correctExplanation && (
+                      <div className="mobile-h5-review-explanation">
+                        <Text strong>正确答案解析</Text>
+                        <Paragraph className="mobile-h5-paragraph">{item.correctExplanation}</Paragraph>
+                      </div>
+                    )}
+
+                    {!item.isCorrect && item.wrongExplanation && (
+                      <div className="mobile-h5-review-explanation">
+                        <Text strong>错误答案解析</Text>
+                        <Paragraph className="mobile-h5-paragraph">{item.wrongExplanation}</Paragraph>
+                      </div>
+                    )}
+
+                    {!item.correctExplanation && item.explanation && (
+                      <div className="mobile-h5-review-explanation">
+                        <Text strong>解析</Text>
+                        <Paragraph className="mobile-h5-paragraph">{item.explanation}</Paragraph>
+                      </div>
+                    )}
                   </Space>
                 </article>
               );

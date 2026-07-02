@@ -9,8 +9,8 @@
 
 对应 SQL 文件：
 
-- `admin/ruoyi-vue/sql/crypto_quiz_roles.sql`
-- `admin/ruoyi-vue/sql/crypto_quiz_menu.sql`
+- `admin/cryptoquiz-admin/sql/crypto_quiz_roles.sql`
+- `admin/cryptoquiz-admin/sql/crypto_quiz_menu.sql`
 
 ## 当前本地默认绑定
 
@@ -41,7 +41,7 @@ insert ignore into sys_user_role (user_id, role_id) values (1, 203);
 
 ```bash
 npm run cryptoquiz:admin
-npm run ruoyi:ui
+npm run cryptoquiz:ui
 ```
 
 或直接一起启动：
@@ -53,8 +53,8 @@ npm run cryptoquiz:stack
 说明：
 
 - `cryptoquiz:admin` 会读取 `backend/.env` 中的 MySQL 配置映射到 CryptoQuiz 所需的 `MYSQL_*`
-- `ruoyi:ui` 默认启动在 `http://localhost:8081`
-- `cryptoquiz:admin` 会检查 `8080`，`ruoyi:ui` 会检查 `8081`，`cryptoquiz:stack` 会在启动前统一检查端口占用
+- `cryptoquiz:ui` 默认启动在 `http://localhost:8081`
+- `cryptoquiz:admin` 会检查 `8080`，`cryptoquiz:ui` 会检查 `8081`，`cryptoquiz:stack` 会在启动前统一检查端口占用
 - `cryptoquiz:admin` 与 `cryptoquiz:stack` 会先检查 `backend/.env` 中配置的 MySQL 地址是否可达
 - `cryptoquiz:admin` 与 `cryptoquiz:stack` 会自动检查 `127.0.0.1:6379`；若本地 Redis 不可用且 Docker 可用，会自动拉起 `cryptoquiz-redis`
 

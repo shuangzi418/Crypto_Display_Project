@@ -94,7 +94,7 @@ write_nginx_config() {
   tmp_file="$(mktemp)"
   render_server_block "$app_server_name" "${FRONTEND_PORT:-3000}" >"$tmp_file"
   if [[ -n "$admin_server_name" ]]; then
-    render_server_block "$admin_server_name" "${RUOYI_UI_PORT:-8081}" >>"$tmp_file"
+    render_server_block "$admin_server_name" "${CRYPTOQUIZ_UI_PORT:-8081}" >>"$tmp_file"
   fi
   if [[ -n "$h5_server_name" ]]; then
     render_h5_server_block "$h5_server_name" "${FRONTEND_PORT:-3000}" >>"$tmp_file"

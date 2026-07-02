@@ -46,8 +46,8 @@ docker compose logs -f
 |------|------|------|
 | 用户前端 | http://localhost | 80 |
 | 管理后台 | http://localhost:8081 | 8081 |
-| 后端 API | http://localhost:5000 | 5000 |
-| 健康检查 | http://localhost:5000/health | 5000 |
+| 后端 API | http://localhost:5300 | 5300（当前示例，可配置） |
+| 健康检查 | http://localhost:5300/health | 5300（当前示例，可配置） |
 
 ---
 
@@ -74,7 +74,7 @@ docker compose logs -f
 # 特定服务
 docker compose logs -f backend
 docker compose logs -f mysql
-docker compose logs -f ruoyi-admin
+docker compose logs -f cryptoquiz-admin
 ```
 
 ### 服务管理
@@ -95,7 +95,7 @@ docker compose down -v
 ### 健康检查
 ```bash
 # 后端 API
-curl http://localhost:5000/health
+curl http://localhost:5300/health
 
 # 查看服务状态
 docker compose ps
@@ -143,7 +143,8 @@ docker compose ps
 **解决**: 修改 `.env` 文件中的端口
 ```env
 FRONTEND_PORT=3001
-RUOYI_UI_PORT=8082
+BACKEND_PORT=5300
+CRYPTOQUIZ_UI_PORT=8082
 ```
 
 ### 构建失败
